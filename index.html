@@ -127,6 +127,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
 #app{display:contents}
 .adv2 input{width:100%;font:inherit;font-size:14px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 #share img{max-width:100%;border-radius:8px;border:1px solid var(--line)}
+.gst{width:100%;border-collapse:collapse;font-size:13px}.gst td,.gst th{padding:3px 6px;border-bottom:1px solid var(--line,#8884);text-align:left}.gst .num{text-align:right;white-space:nowrap}
 </style>
 </head><body>
 
@@ -193,7 +194,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
         <div class="seg" id="side"></div>
         <div class="checks" id="bChecks"></div>
         <label for="bp" style="font-size:14px;margin-top:6px">Ugovor i bounty, coins na 1k štete</label>
-        <input type="number" id="bp" min="0" step="0.01" inputmode="decimal">
+        <input type="text" id="bp" inputmode="decimal" autocomplete="off" placeholder="0">
         <span class="hint" id="bpHint"></span>
         <details class="adv2"><summary style="cursor:pointer;color:var(--brass);font-size:14px">Napredno: ostali prihodi</summary>
           <div style="display:grid;gap:6px;margin-top:8px">
@@ -460,7 +461,9 @@ const KEYS=["weap","armor","ammo","food","pill","s2","weap2","armor2","ammo2","q
 const qName=v=>v<=0?"min":v>=100?"max":"srednji";
 function setState(s){KEYS.forEach(k=>{const r=document.getElementById(k+"-"+s[k]);if(r)r.checked=true});bonus.value=s.bonus;
   ["q1","q2"].forEach(k=>{if(s[k]==null){const r=document.getElementById(k+"-50");if(r)r.checked=true}});if(s.mine)mine.checked=s.mine!=="no";if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
-function getBP(){const v=parseFloat(String(bp.value).replace(",","."));return isFinite(v)&&v>=0?v:0}
+// tekstualno polje da iPhone tastatura sa zarezom radi; zarez i tačka su isto
+function getBP(){const v=parseFloat(String(bp.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
+function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1)bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
 function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=+o.q1;o.q2=+o.q2;return o}
 const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
@@ -566,9 +569,15 @@ function gearWords(r){
   if(!buy.length)return`Svu opremu danas napravi sam (${u(craft)}), jeftinije je od marketa.`+rnd;
   return`Napravi sam: ${u(craft)}. Kupi na marketu: ${u(buy)}.`+rnd;
 }
-function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v),t=p=>p.mine?" (tvoj)":perQ?` (kvalitet ${fmt(p.q*100)}%)`:"";
-  return`${rn(x.w,WNAME[x.w])}${t(P.weapon)}: attack ${f(P.weapon.atk)}, crit ${f(P.weapon.cc)}%. ${rn(x.a,SETM[x.a][0].toUpperCase()+SETM[x.a].slice(1))} set: šlem crit dmg +${f(P.helmet.v)}%${t(P.helmet)}, grudi armor ${f(P.chest.v)}${t(P.chest)}, pantalone armor ${f(P.pants.v)}${t(P.pants)}, čizme dodge ${f(P.boots.v)}${t(P.boots)}, rukavice precision ${f(P.gloves.v)}${t(P.gloves)}. `+
-    `Ukupno sa skilovima: attack ${f(x.st.atk)}, precision ${f(x.st.prec)}%, crit ${f(x.st.cc)}% za +${f(x.st.cd)}%, armor ${f(x.aE*100)}%, dodge ${f(x.dE*100)}%. Prosečan udarac ${f(x.Y)}.`}
+// tabela komada iz preporuke: stat koji je računat i cena po kojoj je računat (kupovina ili izrada)
+function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v),q=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
+  const rows=[["weapon",WCODE[x.w],x.w,rn(x.w,WNAME[x.w]),`attack ${f(P.weapon.atk)}, crit ${f(P.weapon.cc)}%`],
+    ...[["helmet",`crit šteta +${f(P.helmet.v)}%`],["chest",`armor ${f(P.chest.v)}`],["pants",`armor ${f(P.pants.v)}`],["boots",`dodge ${f(P.boots.v)}`],["gloves",`precision ${f(P.gloves.v)}`]]
+      .map(([sl,t])=>[sl,sl+(x.a+1),x.a,rn(x.a,SLN[sl]),t])];
+  let sum=0;const tr=rows.map(([sl,code,r,name,t])=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r,p.q);if(isFinite(c))sum+=c;
+    return`<tr><td>${name}</td><td>${t}</td><td class="num">${q(p)}</td><td class="num">${fmt(c)} (${p.mine?"imaš":way(code,r,p.q)==="buy"?"kupi":"izradi"})</td></tr>`}).join("");
+  return`<table class="gst"><thead><tr><th>Komad</th><th>Stat</th><th class="num">Kvalitet</th><th class="num">Cena</th></tr></thead><tbody>${tr}<tr><td colspan="3"><strong>Ceo komplet</strong> <span class="hint">(cena novog na marketu za ono što imaš)</span></td><td class="num"><strong>${fmt(sum)}</strong></td></tr></tbody></table>`+
+    `<p class="hint" style="margin:4px 0 8px">Sa skilovima: attack ${f(x.st.atk)}, precision ${f(x.st.prec)}%, crit ${f(x.st.cc)}% za +${f(x.st.cd)}%, armor ${f(x.aE*100)}%, dodge ${f(x.dE*100)}%. Prosečan udarac ${f(x.Y)}.</p>`}
 function renderRec(){
   const b=bestBuild(+bonus.value);
   if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
@@ -582,7 +591,7 @@ function renderRec(){
     `<div class="rrow"><span class="k">Glavna sesija · 8h · pill na početku</span><span class="v2">${line(s.weap,s.armor,s.q1,s.qs1,s.ammo,s.food,r.s1.h)}</span></div>`+
     `<div class="rrow"><span class="k">Ostatak dana · bez jela</span><span class="v2">${line(s.weap2,s.armor2,s.q2,s.qs2,s.ammo2,null,r.s2.h)}</span></div>`+
     `<div class="rrow"><span class="k">Oprema</span><span>${gearWords(r)}</span></div>`+
-    `<details class="det"><summary>Detalji: statovi po komadu</summary><p style="margin:0">${gearStats(r.s1,!!s.qs1)}</p><p style="margin:0"><strong>Ostatak dana:</strong> ${gearStats(r.s2,!!s.qs2)}</p></details>`;
+    `<details class="det" open><summary>Statovi i cena opreme</summary><p class="hint" style="margin:4px 0">Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj koji daje najviše štete za novac.</p><p style="margin:6px 0 2px"><strong>Glavna sesija</strong></p>${gearStats(r.s1,!!s.qs1)}<p style="margin:6px 0 2px"><strong>Ostatak dana</strong></p>${gearStats(r.s2,!!s.qs2)}</details>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
@@ -698,12 +707,8 @@ function setLive(){const d=new Date(D.updatedAt),me=D.me;liveTag.className="live
   footSkills.textContent=`Tvoji skilovi: attack ${BASE.attack}, precision ${BASE.precision}, crit chance ${BASE.cc}, crit damage ${BASE.cd}, armor ${BASE.armor}, dodge ${BASE.dodge}, health ${BASE.health}, hunger ${BASE.hunger}, loot ${BASE.loot}, rank +${BASE.rank}%.`}
 
 let saved=null;
-document.querySelector(".controls").addEventListener("input",e=>{const t=e.target;
-  if(t.id&&t.id.startsWith("ck-"))applyChecks();
-  if(t.name==="side"){BT.side=t.value;autoChecks();applyChecks();setBountyFromBattle()}
-  if(t.id==="bLink"||t.id==="bPick")return;
-  try{localStorage.setItem("vk-checks",JSON.stringify(readChecks()))}catch(x){}
-  render()});
+document.querySelector(".controls").addEventListener("input",onCtl);
+if(!battleP.closest(".controls"))battleP.addEventListener("input",onCtl);
 bLoad.addEventListener("click",loadLink);
 bLink.addEventListener("keydown",e=>{if(e.key==="Enter")loadLink()});
 bPick.addEventListener("change",async()=>{if(!bPick.value)return;bInfo.textContent="Učitavam bitku…";try{pickBattle(await battleById(bPick.value))}catch(e){bInfo.textContent="Ne mogu da učitam tu bitku."}});

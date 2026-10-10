@@ -1261,5 +1261,15 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   b.att.ct=[];b.def.ct=[];
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
+
+const VKV="fc41093ed2";
+(function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
+  let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
+    const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;
+    const m=(await r.text()).match(/const VKV="([0-9a-f]{10})"/);if(!m||m[1]===VKV)return;
+    let last=null;try{last=sessionStorage.getItem("vk-upd")}catch(e){}if(last===m[1])return;
+    try{sessionStorage.setItem("vk-upd",m[1])}catch(e){}location.replace(location.pathname+"?u="+m[1]+location.hash)
+  }catch(e){}finally{busy=false}};
+  setTimeout(chk,1500);setInterval(chk,15*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)chk()})})();
 </script>
 </body></html>

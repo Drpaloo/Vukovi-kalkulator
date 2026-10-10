@@ -777,7 +777,8 @@ function tables(){
     tFirms.innerHTML=`<tr><th>Firma</th><th>Proizvod</th><th class="n">Bonus</th><th class="n">Engine</th><th class="n">Coins / dan</th></tr>`+
       D.firms.map(f=>`<tr><td>${f.name}</td><td>${ITEM[f.item]||f.item}</td><td class="n">+${f.bonus}%</td><td class="n">L${f.engine}</td><td class="n">${fmt(f.perDay,1)}</td></tr>`).join("")+
       (D.keyless?`<tr><td colspan="5">Radnici: za njihovu zaradu treba API ključ</td></tr>`:`<tr><td colspan="4">Radnici: dobit posle plata (plate za 24h: ${fmt(D.wagesPaid24h,1)})</td><td class="n">${D.firmsWorkers>=0?"+":""}${fmt(D.firmsWorkers,1)}</td></tr>`)+
-      `<tr><td colspan="4"><strong>Ukupno</strong></td><td class="n"><strong>${fmt(D.firmsTotal,1)}</strong></td></tr>`;
+      `<tr><td colspan="4">Tvoj lični rad u firmi (preduzetništvo i eko proizvodnja)</td><td class="n">+${fmt(selfInc(),1)}</td></tr>`+
+      `<tr><td colspan="4"><strong>Ukupno dnevno</strong></td><td class="n"><strong>${fmt(D.firmsTotal+selfInc(),1)}</strong></td></tr>`;
     firmNote.textContent="prodajna cena minus sirovina, sa bonusom regiona";
   } else {tFirms.innerHTML=`<tr><td>Podaci o firmama trenutno nisu dostupni, pa koristim poslednju poznatu zaradu (${fmt(D.firmsTotal)} dnevno).</td></tr>`}
   const W=D.week;

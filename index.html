@@ -707,6 +707,14 @@ function setLive(){const d=new Date(D.updatedAt),me=D.me;liveTag.className="live
   footSkills.textContent=`Tvoji skilovi: attack ${BASE.attack}, precision ${BASE.precision}, crit chance ${BASE.cc}, crit damage ${BASE.cd}, armor ${BASE.armor}, dodge ${BASE.dodge}, health ${BASE.health}, hunger ${BASE.hunger}, loot ${BASE.loot}, rank +${BASE.rank}%.`}
 
 let saved=null;
+// panel bitke je posle preuređenja van .controls, pa isti slušalac kačimo na oba
+function onCtl(e){const t=e.target;
+  if(t.id&&t.id.startsWith("ck-"))applyChecks();
+  if(t.id==="bp")bpCheck();
+  if(t.name==="side"){BT.side=t.value;autoChecks();applyChecks();setBountyFromBattle()}
+  if(t.id==="bLink"||t.id==="bPick")return;
+  try{localStorage.setItem("vk-checks",JSON.stringify(readChecks()))}catch(x){}
+  render()}
 document.querySelector(".controls").addEventListener("input",onCtl);
 if(!battleP.closest(".controls"))battleP.addEventListener("input",onCtl);
 bLoad.addEventListener("click",loadLink);
@@ -906,11 +914,17 @@ async function loadUser(name){
 }
 function applyChecksIfNew(sc){if(!sc)applyChecks()}
 async function loadWeek(uid){
-  const since=new Date(Date.now()-7*864e5).toISOString();let ids=[];
+  const since=new Date(Date.now()-7*864e5).toISOString();let ids=[];const ended=new Set();
   try{for(const a of[true,false]){let cur=null;for(let i=0;i<10;i++){const inp={isActive:a,limit:100};if(cur)inp.cursor=cur;const d=await api("battle.getBattles",inp);
-    ids=ids.concat(d.items.filter(b=>b.createdAt>=since).map(b=>b._id));cur=d.nextCursor;if(!cur||d.items[d.items.length-1].createdAt<since)break}}}catch(e){return}
-  weekNote.textContent=`Učitavam tvoje bitke (${ids.length})…`;
-  const S=(await pool([...new Set(ids)],8,id=>api("battleLootSummary.getByBattleAndUser",{battleId:id,userId:uid},true))).filter(s=>s&&s.hits);
+    const f=d.items.filter(b=>b.createdAt>=since).map(b=>b._id);ids=ids.concat(f);if(!a)f.forEach(x=>ended.add(x));cur=d.nextCursor;if(!cur||d.items[d.items.length-1].createdAt<since)break}}}catch(e){return}
+  // završene bitke se ne menjaju: pamtimo ih u browseru da ne šaljemo stotine zahteva pri svakom učitavanju (rizik od bana IP-a)
+  const CK="vk-loot-"+uid;let C={};try{C=JSON.parse(localStorage.getItem(CK))||{}}catch(e){}
+  const need=[...new Set(ids)].filter(id=>!(ended.has(id)&&id in C));
+  weekNote.textContent=`Učitavam tvoje bitke (${need.length} novih)…`;
+  const got=await pool(need,3,id=>api("battleLootSummary.getByBattleAndUser",{battleId:id,userId:uid},true).catch(e=>/grešku 4(0[04]|22)/.test(e.message)?null:undefined));
+  need.forEach((id,i)=>{if(ended.has(id)&&got[i]!==undefined)C[id]=got[i]&&got[i].hits?got[i]:0});
+  const keep={};[...new Set(ids)].forEach(id=>{if(id in C)keep[id]=C[id]});try{localStorage.setItem(CK,JSON.stringify(keep))}catch(e){}
+  const S=[...new Set(ids)].map(id=>id in keep?keep[id]:got[need.indexOf(id)]).filter(s=>s&&s.hits);
   const W={hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0};
   const battles=S.map(s=>{W.hits+=s.hits;W.dmg+=s.totalDmg;W.case1+=s.case1Count||0;W.case2+=s.case2Count||0;W.bounty+=s.totalMoneyFromBounty||0;W.contract+=s.totalMoneyFromContract||0;
     return{at:s.createdAt,hits:s.hits,dmg:s.totalDmg,c1:s.case1Count||0,c2:s.case2Count||0,bounty:s.totalMoneyFromBounty||0,contract:s.totalMoneyFromContract||0}}).sort((a,b)=>a.at<b.at?1:-1);

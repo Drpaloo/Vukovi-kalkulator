@@ -548,7 +548,8 @@ function sess(s,w,a,ammo,pmult,health,meals,q){
   const P=prices(), st=stats(w,a,q,s.mine!=="no"), A=st.prec/100, U=st.cc/100, m=st.cd/100;
   const at=st.atk*(1+s.bonus/100)*(1+AMMOM[ammo]/100)*pmult*(1+BASE.rank/100);
   const Y=(1-A)*at*.5+A*(1-U)*at+A*U*at*(1+m);
-  const aE=Dn(st.armor), dE=Dn(st.dodge), hpHit=10*(1-aE)*(1-dE);
+  // igra health po udarcu zaokružuje na 0,1, pa armor radi u stepenicama (47 → 4,6, 48–49 → 4,5 …)
+  const aE=Dn(st.armor), dE=Dn(st.dodge), hpHit=Math.round(100*(1-aE))/10*(1-dE);
   const h=(health+meals*BASE.health*FOODHP[s.food]/100)/hpHit, undodged=h*(1-dE);
   const wCost=itemCost(WCODE[w],w,st.P.weapon.q), setCost=SLOTS.reduce((t,sl)=>t+itemCost(sl+(a+1),a,st.P[sl].q),0);
   return{w,a,q,wUse:h/100,aUse:undodged/100,h,Y,st,aE,dE,hpHit,wCost,setCost,meals,dmg:h*Y,landed:h*A,
@@ -1361,7 +1362,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="f80946dd4e";
+const VKV="cde4810e76";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

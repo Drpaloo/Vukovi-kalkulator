@@ -156,7 +156,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
   table.t{font-size:13px}table.t th{letter-spacing:.02em;padding:6px 5px}table.t td{padding:6px 5px}
   .panel{padding:14px}
   h1{font-size:24px}.lede{display:none}
-  .btnrow{flex-wrap:nowrap}.btnrow .btn{flex:1;padding:8px 6px;font-size:13px}
+  .btnrow{flex-wrap:nowrap}.btnrow .btn{flex:1;padding:8px 6px;font-size:13px}.topact{flex-wrap:wrap}.topact .btn{flex:1 1 100%;font-size:15px;padding:12px}
 }
 </style>
 </head><body>
@@ -222,6 +222,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
     <div class="ovg" id="ovGrid"></div>
   </div>
   <div class="tab" id="tab-danas" hidden>
+  <div class="btnrow topact" style="margin:0"><button id="best" type="button" class="btn">Nađi najveću štetu koja je u plusu</button><button id="reset" type="button" class="btn ghost">Vrati opremu koju sad nosiš</button></div>
   <section class="panel" id="battleP">
       <fieldset id="battle"><legend class="h2like">Bitka koju danas biješ</legend>
         <div class="row"><input type="text" id="bLink" placeholder="Nalepi link bitke" autocomplete="off" aria-label="Link bitke"><button id="bLoad" type="button" class="btn" style="padding:8px 14px">Učitaj</button></div>
@@ -288,8 +289,6 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
       <fieldset><legend>Druga sesija: kvalitet opreme</legend><div class="seg" id="q2"></div></fieldset>
       <fieldset><legend>Druga sesija: municija</legend><div class="seg" id="ammo2"></div></fieldset>
       </details>
-      <button id="reset" type="button" class="linkbtn">Vrati opremu koju sad nosiš</button>
-      <button id="best" type="button" class="linkbtn">Nađi najveću štetu koja je u plusu</button>
     </div>
 
     <div class="panel" aria-live="polite">
@@ -800,8 +799,10 @@ if(!battleP.closest(".controls"))battleP.addEventListener("input",onCtl);
 bLoad.addEventListener("click",loadLink);
 bLink.addEventListener("keydown",e=>{if(e.key==="Enter")loadLink()});
 bPick.addEventListener("change",async()=>{if(!bPick.value)return;bInfo.textContent="Učitavam bitku…";try{pickBattle(await battleById(bPick.value))}catch(e){bInfo.textContent="Ne mogu da učitam tu bitku."}});
-reset.addEventListener("click",()=>{setState({...getState(),...(CUR||{})});render()});
-best.addEventListener("click",findBest);
+// dugmad su gore, a rezultat se vidi u „Probaj svoj build“, pa ga otvaramo
+const openTry=()=>{const d=document.getElementById("weap").closest("details");if(d&&!d.open)d.open=true;if(d)setTimeout(()=>d.scrollIntoView({behavior:"smooth",block:"start"}),50)};
+reset.addEventListener("click",()=>{setState({...getState(),...(CUR||{})});render();openTry()});
+best.addEventListener("click",()=>{findBest();openTry()});
 repOpen.addEventListener("click",()=>openShare("rep"));
 codeOpen.addEventListener("click",()=>openShare("code"));
 shareClose.addEventListener("click",()=>{share.hidden=true});

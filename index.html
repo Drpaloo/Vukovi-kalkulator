@@ -278,7 +278,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
       <fieldset><legend>Set: šlem, grudi, pantalone, čizme, rukavice (boja)</legend><div class="seg" id="armor"></div></fieldset>
       <fieldset><legend>Kvalitet opreme, glavna sesija</legend><div class="seg" id="q1"></div>
         <span class="hint">Statovi u istoj boji idu od najslabijih (min) do najjačih (max).</span></fieldset>
-      <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px"><input type="checkbox" id="mine" checked style="margin-top:4px;accent-color:var(--brass)"><span>Za boju koju sad nosiš koristi tačne statove tvoje opreme<br><span class="hint" id="mineNote"></span></span></label>
+      <input type="checkbox" id="mine" checked hidden><p class="hint" id="mineNote" style="margin:0"></p>
       <fieldset><legend>Municija</legend><div class="seg" id="ammo"></div></fieldset>
       <fieldset><legend>Hrana</legend><div class="seg" id="food"></div></fieldset>
       <fieldset><legend>Pill svaki dan</legend><div class="seg" id="pill"></div>
@@ -542,7 +542,7 @@ seg("q1",{0:"Min",50:"Srednje",100:"Max"});seg("q2",{0:"Min",50:"Srednje",100:"M
 const KEYS=["weap","armor","ammo","food","pill","s2","weap2","armor2","ammo2","q1","q2"];
 const qName=v=>v<=0?"min":v>=100?"max":"srednji";
 function setState(s){KEYS.forEach(k=>{const r=document.getElementById(k+"-"+s[k]);if(r)r.checked=true});bonus.value=s.bonus;
-  ["q1","q2"].forEach(k=>{if(s[k]==null){const r=document.getElementById(k+"-50");if(r)r.checked=true}});if(s.mine)mine.checked=s.mine!=="no";if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
+  ["q1","q2"].forEach(k=>{if(s[k]==null){const r=document.getElementById(k+"-50");if(r)r.checked=true}});mine.checked=true;if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
 // tekstualno polje da iPhone tastatura sa zarezom radi; zarez i tačka su isto
 function getBP(){const v=parseFloat(String(bp.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
 function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1)bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
@@ -557,7 +557,7 @@ function fixAmmo(){for(const[w,m]of[["weap","ammo"],["weap2","ammo2"]]){const wv
   const t=document.getElementById(m+"-"+(+wv.value===0?"none":"light"));if(t)t.checked=true}}
 function render(){fixAmmo();
   const s=getState();bonusO.textContent=s.bonus+"%";
-  const G=D.myGear;mineNote.textContent=G&&G.weapon?`Nosiš: ${WNAME[G.weapon.r]} (attack ${G.weapon.atk}, crit ${G.weapon.cc}%)`+(G.helmet?`, ${SETM[G.helmet.r]} set: `+SLOTS.map(sl=>G[sl]?SLN[sl].toLowerCase()+" "+G[sl].v:"").filter(Boolean).join(", "):""):"Ne vidim tvoju opremu.";
+  const G=D.myGear;mineNote.textContent=G&&G.weapon?`Za boju koju nosiš računa tvoju pravu opremu. Nosiš: ${WNAME[G.weapon.r]} (attack ${G.weapon.atk}, crit ${G.weapon.cc}%)`+(G.helmet?`, ${SETM[G.helmet.r]} set: `+SLOTS.map(sl=>G[sl]?SLN[sl].toLowerCase()+" "+G[sl].v:"").filter(Boolean).join(", "):""):"Ne vidim tvoju opremu.";
   try{localStorage.setItem("vk-state",JSON.stringify({...s,user:D.me.id}))}catch(e){}
   const r=calc(s);
   sIn.textContent=fmt(r.I);sOut.textContent=fmt(r.O);sNet.textContent=sg(r.net);sK.textContent=perK(r);sK.style.color=r.net>=0?"var(--good)":"var(--bad)";sDmg.textContent=fk(r.dmg);

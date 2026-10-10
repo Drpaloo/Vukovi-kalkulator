@@ -566,7 +566,7 @@ function render(){fixAmmo();
   hitsNote.textContent=`~${fmt(r.h)} udaraca · ${r.meals} obroka`;document.querySelectorAll(".s2f").forEach(f=>f.style.display=s.s2==="yes"?"":"none");
   const row=(l,v,neg)=>`<tr><td>${l}</td><td>${neg?"−":"+"}${fmt(v,1)}</td></tr>`;
   ledger.innerHTML=`<tr class="sec"><td colspan="2">Prihod</td></tr>`+
-    row(firmMan.value===""?"Firme (iz API-ja)":"Firme (upisao si ručno)",r.inc.firms)+row("Tvoj lični rad u firmi",r.inc.rad)+row("Case-ovi sa pogođenih udaraca (loot 15%)",r.inc.cases)+row("Wooden case-ovi",r.inc.wooden)+row("Pool loot iz bitaka",r.inc.pool)+
+    row(firmMan.value===""?"Firme (iz API-ja)":"Firme (upisao si ručno)",r.inc.firms)+row("Tvoj lični rad u firmi",r.inc.rad)+row(`Case-ovi sa pogođenih udaraca (loot ${BASE.loot}%)`,r.inc.cases)+row("Wooden case-ovi",r.inc.wooden)+row("Pool loot iz bitaka",r.inc.pool)+
     row("Scraps kad se oprema sama rastavi",r.inc.scrap)+row(`Ugovor i bounty (${(s.bp??0).toFixed(3)} na 1k)`,r.inc.bounty)+
     `<tr class="sec"><td colspan="2">Trošak</td></tr>`+row("Habanje oružja",r.out.weapon,1)+row("Habanje seta",r.out.armor,1)+row("Hrana",r.out.food,1)+row("Municija",r.out.ammo,1)+row("Pill",r.out.pill,1)+
     `<tr class="total"><td>Saldo</td><td style="color:${r.net>=0?"var(--good)":"var(--bad)"}">${sg(r.net)}</td></tr>`;
@@ -851,7 +851,9 @@ function casePanel(){
 // skilovi: vrednost po nivou (gameConfig), nivo n košta n poena
 const SKD={attack:["attack",100,25,"Attack"],precision:["precision",50,5,"Precision"],cc:["criticalChance",10,5,"Crit šansa"],cd:["criticalDamages",100,20,"Crit šteta"],
   armor:["armor",0,6,"Armor"],dodge:["dodge",0,4,"Dodge"],health:["health",100,10,"Health"],hunger:["hunger",4,1,"Hunger"],loot:["lootChance",5,2,"Loot"]};
-const SKK=Object.keys(SKD),skLv=k=>Math.round((BASE[k]-SKD[k][1])/SKD[k][2]),skVal=(k,l)=>SKD[k][1]+l*SKD[k][2],skCost=l=>l*(l+1)/2;
+// nivo skila iz API-ja (SKL) kad ga imamo; prestiž dodaje vrednost bez poena, pa ga čuvamo kao pomak (SKOFF)
+let SKL=null,SKOFF={};
+const SKK=Object.keys(SKD),skLv=k=>SKL&&SKL[k]!=null?SKL[k]:Math.round((BASE[k]-SKD[k][1])/SKD[k][2]),skVal=(k,l)=>SKD[k][1]+l*SKD[k][2]+(SKOFF[k]||0),skCost=l=>l*(l+1)/2;
 function skInit(){const L=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.freePts??FALLBACK.freePts??0;
   skNote.textContent=`Menjam samo 9 borbenih skilova, ekonomski (firme i ostalo) ostaju kako jesu. Imaš ${SKK.reduce((t,k)=>t+skCost(L[k]),0)+free} poena u borbenim skilovima${free?` (${free} neraspoređen)`:""}. Predlog mora da bude bolji za slabu (40%), srednju (70%) i jaku (100%) bitku i za onu koju si izabrao, jer skilove možeš da menjaš tek posle 7 dana. Reset predlažem tek kad je dobitak bar 5% u svakoj.`;
   if(!tSk.dataset.done)tSk.innerHTML=`<tr><th>Skil</th><th class="n">Nivo</th><th class="n">Vrednost</th></tr>`+SKK.map(k=>`<tr><td>${SKD[k][3]}</td><td class="n">${L[k]}</td><td class="n">${BASE[k]}</td></tr>`).join("")}
@@ -1125,6 +1127,7 @@ async function loadUser(name){
     const sk=user.skills;
     BASE={attack:sk.attack.value,precision:sk.precision.value,cc:sk.criticalChance.value,cd:sk.criticalDamages.value,armor:sk.armor.value,dodge:sk.dodge.value,
       health:sk.health.value,hunger:sk.hunger.value,loot:sk.lootChance.value,rank:sk.attack.militaryRankPercent||0};
+    SKL=Object.fromEntries(SKK.map(k=>[k,sk[SKD[k][0]].level||0]));SKOFF=Object.fromEntries(SKK.map(k=>[k,BASE[k]-(SKD[k][1]+SKL[k]*SKD[k][2])]));
     step("Učitavam državu, MU i opremu…");
     const [cl,mu,eq]=await Promise.all([api("country.getAllCountries"),user.mu?api("mu.getById",{muId:user.mu}).catch(()=>({})):{},api("inventory.fetchCurrentEquipment",{userId:user._id}).catch(()=>null)]);
     const countries=Array.isArray(cl)?cl:(cl.items||[]);countries.forEach(c=>CNAME[c._id]=c.name);

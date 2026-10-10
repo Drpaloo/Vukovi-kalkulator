@@ -124,13 +124,40 @@ details.adv[open]{display:grid;gap:16px}
 details.why{font-size:13px;color:var(--muted)}details.why>summary{cursor:pointer;color:var(--brass);font-size:13px;list-style:none;display:inline}
 details.why>summary::-webkit-details-marker{display:none}details.why[open]>summary{display:block;margin-bottom:4px}
 details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det[open]{display:grid;gap:8px}
-#login{display:grid;gap:8px;margin-top:12px;max-width:520px}
+#login{display:grid;gap:8px;margin-top:12px;max-width:520px}#login[hidden]{display:none}
 #login input[type=text],#login input[type=password]{width:100%;font:inherit;font-size:15px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 #login .err{color:var(--bad);font-size:14px;margin:0}
 #app{display:contents}
 .adv2 input{width:100%;font:inherit;font-size:14px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 #share img{max-width:100%;border-radius:8px;border:1px solid var(--line)}
 .gst{width:100%;border-collapse:collapse;font-size:13px}.gst td,.gst th{padding:3px 6px;border-bottom:1px solid var(--line,#8884);text-align:left}.gst .num{text-align:right;white-space:nowrap}
+/* samo tamna tema */
+:root,:root[data-theme]{--bg:#171a14; --panel:#20251c; --ink:#e7eadc; --muted:#a2a993; --line:#363d2e;
+  --brass:#e0ac4a; --brass-soft:#3b301a; --olive:#a9bb73;
+  --q0:#b8b8b0; --q1:#72d276; --q2:#73aaff; --q3:#c995ff; --q4:#f2c552; --q5:#ff7f7f;
+  --good:#7fcf86; --good-soft:#1f3522; --bad:#f08a7e; --bad-soft:#3e211d; color-scheme:dark}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
+.tabs .ts{display:none}
+.ovg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ovc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;align-content:start}
+.ovc h3{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--brass);display:flex;align-items:center;gap:8px}
+.ovc .big{font-family:var(--display);font-size:19px;font-weight:700;line-height:1.3}
+.ovc .row2{display:flex;flex-wrap:wrap;gap:4px 18px;font-family:var(--mono);font-size:14px}
+.ovc .row2 span b{font-size:17px}
+.ovc .go{justify-self:start;background:none;border:0;padding:4px 0;color:var(--brass);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.ovc .warn{color:var(--bad);font-size:14px}
+@media (max-width:760px){
+  body{padding:16px 12px 92px}
+  .tabs{position:fixed;top:auto;bottom:0;left:0;right:0;margin:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:2px;border-top:1px solid var(--line);background:var(--panel)}
+  .tabs button{flex-direction:column;gap:2px;border:0;border-radius:8px;padding:6px 2px;background:none;font-size:11px;font-weight:600;color:var(--muted);min-width:0}
+  .tabs button[aria-selected=true]{background:var(--brass-soft);color:var(--brass)}
+  .tabs .tl{display:none}.tabs .ts{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  table.t{font-size:13px}table.t th{letter-spacing:.02em;padding:6px 5px}table.t td{padding:6px 5px}
+  .panel{padding:14px}
+  h1{font-size:24px}.lede{display:none}
+  .btnrow{flex-wrap:nowrap}.btnrow .btn{flex:1;padding:8px 6px;font-size:13px}
+}
 </style>
 </head><body>
 
@@ -184,13 +211,17 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
 
 
   <nav class="tabs" role="tablist" aria-label="Delovi kalkulatora">
-    <button type="button" role="tab" data-tab="danas" aria-selected="true">Danas</button>
-    <button type="button" role="tab" data-tab="oprema" aria-selected="false">Oprema i market</button>
-    <button type="button" role="tab" data-tab="skilovi" aria-selected="false">Skilovi</button>
-    <button type="button" role="tab" data-tab="plan" aria-selected="false">Plan 7 dana</button>
-    <button type="button" role="tab" data-tab="ekonomija" aria-selected="false">Ekonomija</button>
+    <button type="button" role="tab" data-tab="pregled" aria-selected="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="tl">Pregled</span><span class="ts">Pregled</span></button>
+    <button type="button" role="tab" data-tab="danas" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg><span class="tl">Danas</span><span class="ts">Danas</span></button>
+    <button type="button" role="tab" data-tab="oprema" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg><span class="tl">Oprema i market</span><span class="ts">Oprema</span></button>
+    <button type="button" role="tab" data-tab="skilovi" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Skilovi</span><span class="ts">Skilovi</span></button>
+    <button type="button" role="tab" data-tab="plan" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="tl">Plan 7 dana</span><span class="ts">Plan</span></button>
+    <button type="button" role="tab" data-tab="ekonomija" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V10l5 3V10l5 3V6l8 4v11z"/><path d="M3 21h18"/></svg><span class="tl">Ekonomija</span><span class="ts">Firme</span></button>
   </nav>
-  <div class="tab" id="tab-danas">
+  <div class="tab" id="tab-pregled">
+    <div class="ovg" id="ovGrid"></div>
+  </div>
+  <div class="tab" id="tab-danas" hidden>
   <section class="panel" id="battleP">
       <fieldset id="battle"><legend class="h2like">Bitka koju danas biješ</legend>
         <div class="row"><input type="text" id="bLink" placeholder="Nalepi link bitke" autocomplete="off" aria-label="Link bitke"><button id="bLoad" type="button" class="btn" style="padding:8px 14px">Učitaj</button></div>
@@ -845,7 +876,7 @@ ovrReset.addEventListener("click",()=>{OVR={};try{localStorage.removeItem("vk-ov
 function showTab(t){if(t==="skilovi")setTimeout(skManual,0);if(t==="plan")planFill();document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
   document.querySelectorAll(".tab").forEach(d=>d.hidden=d.id!=="tab-"+t);try{localStorage.setItem("rb-tab",t)}catch(e){}}
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b){showTab(b.dataset.tab);window.scrollTo({top:0})}});
-try{const t=localStorage.getItem("rb-tab");if(t&&document.getElementById("tab-"+t))showTab(t)}catch(e){}
+// uvek kreće od Pregleda
 // duga objašnjenja idu iza „objašnjenje“, kratke poruke ostaju vidljive
 const KEEPH=new Set(["bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
 document.querySelectorAll(".wrap .hint, .wrap .foot").forEach(h=>{if(KEEPH.has(h.id)||h.closest("summary,label,#share,#login,.why"))return;
@@ -987,6 +1018,20 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
   for(const{f,r}of recs){const x=(1+r.b/100)*ecVpp(E,r.it);if(!sb||x>sb.x)sb={x,name:f.name,it:r.it}}
   ecSelf.textContent=(sb?`Sam radi u firmi ${sb.name} (${itName(sb.it)}): oko ${fmt(works,1)} rada dnevno po ${SK.prod} PP donosi oko ${fmt(pp*sb.x,1)} coina dnevno. `:"")+
     (SK.comp!=null?`Skil Companies ti dozvoljava ${SK.comp} firmi, a aktivnih imaš ${SK.nFirms??D.firms.length}${(SK.nFirms??D.firms.length)<SK.comp?", pa možeš da otvoriš još":""}. Management ti daje mesta za ${SK.mgmt} radnika.`:"")});
+// ---- Pregled: najvažnije sa svih kartica na jednom mestu ----
+function ovRender(){if(typeof ovGrid==="undefined")return;const b=bestBuild(+bonus.value),W=D.week||{},P=D.plan||{},fr=D.freePts??0;
+  const nr=P.lastReset?new Date(Date.parse(P.lastReset)+7*864e5):null,canR=!nr||nr<=new Date();
+  const noB=(D.firms||[]).filter(f=>!f.bonus).length;
+  const card=(ic,t,body,tab,lbl)=>`<section class="ovc"><h3>${ICO_[ic]||""}${t}</h3>${body}<button type="button" class="go" data-go="${tab}">${lbl} →</button></section>`;
+  ovGrid.innerHTML=
+    card("danas","Build za danas",b?`<div class="big">${WNAME[+b.s.weap]}, ${SETM[+b.s.armor]} set</div><div>${AMN[b.s.ammo]}, ${FDN[b.s.food]}${b.s.pill==="yes"?", pill":""}</div><div class="row2"><span>šteta <b>${fk(b.r.dmg)}</b></span><span>saldo <b>${sg(b.r.net)}</b></span><span>bonus ${bonus.value}%</span></div>`:`<div class="warn">Sa ovim bonusom nijedan build nije u plusu.</div>`,"danas","Bitka i detalji")+
+    card("skilovi","Skilovi",`<div class="big">${fr?`${fr} slobodnih poena`:"Svi poeni raspoređeni"}</div><div>Nivo ${P.lvl??"?"}. Reset ${canR?"možeš odmah":"tek od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}.</div>`,"plan",fr?"Gde da ih staviš":"Plan za 7 dana")+
+    card("ekonomija","Firme",`<div class="row2"><span>dnevno <b>${fmt(D.firmsTotal||0,1)}</b></span><span>firmi <b>${(D.firms||[]).length}</b></span></div>${noB?`<div class="warn">${noB} ${noB===1?"firma nema":"firmi nema"} bonus proizvodnje.</div>`:"<div>Sve firme imaju bonus.</div>"}`,"ekonomija","Šta da proizvode")+
+    card("danas","Bitke, 7 dana",W.dmg?`<div class="row2"><span>šteta <b>${fk(W.dmg)}</b></span><span>bounty i ugovori <b>${fmt((W.bounty||0)+(W.contract||0),0)}</b></span><span>case-ova <b>${W.case1||0}</b></span></div>`:`<div>Nema podataka o bitkama${D.keyless?" bez API ključa":""}.</div>`,"danas","Detalji");
+}
+const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
+document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){showTab(g.dataset.go);window.scrollTo({top:0})}});
+{const r0=render;render=function(){r0();try{ovRender()}catch(e){}}}
 async function api(proc,input,auth){
   const u=API+proc+(input!==undefined?"?input="+encodeURIComponent(JSON.stringify(input)):"");
   const h={};if(auth&&KEY)h["X-API-Key"]=KEY;
@@ -1090,7 +1135,7 @@ async function loadUser(name){
     setState(saved);bp.value=0;
     let sc=null;try{sc=JSON.parse(localStorage.getItem("vk-checks"))}catch(e){}
     drawChecks(sc||{pat:true,hq:me.hq>0});applyChecks();
-    RECK="";app.hidden=false;topBtns.hidden=false;
+    RECK="";app.hidden=false;topBtns.hidden=false;login.hidden=true;swUser.hidden=false;
     setLive();battleList();tables();render();
     restoreBattle();
     if(KEY)loadWeek(user._id);
@@ -1130,5 +1175,9 @@ econEthics=async E=>{const need=new Set(["limestone","iron","concrete","steel","
   await pool(todo,3,async c=>{const p=await api("party.getById",{partyId:c.party}).catch(()=>null);if(p)C[c.id]=(p.ethics||{}).industrialism||0});
   E.countries.forEach(c=>{if(c.id in C)c.ind=C[c.id]});
   if(todo.length)try{localStorage.setItem("vk-eth",JSON.stringify({at,eth:C}))}catch(e){}};
+
+// posle učitavanja forma se skloni, a „Promeni igrača“ je vraća
+{const sw=document.createElement("button");sw.type="button";sw.id="swUser";sw.className="linkbtn";sw.textContent="Promeni igrača";sw.hidden=true;sw.style.marginLeft="10px";
+  liveTag.after(sw);sw.addEventListener("click",()=>{login.hidden=false;sw.hidden=true;uname.focus()})}
 </script>
 </body></html>

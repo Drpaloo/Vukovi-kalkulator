@@ -780,7 +780,7 @@ function tables(){
     tFirms.innerHTML=`<tr><th>Firma</th><th>Proizvod</th><th class="n">Bonus</th><th class="n">Engine</th><th class="n">Coins / dan</th></tr>`+
       D.firms.map(f=>`<tr><td>${f.name}</td><td>${ITEM[f.item]||f.item}</td><td class="n">+${f.bonus}%</td><td class="n">L${f.engine}</td><td class="n">${fmt(f.perDay,1)}</td></tr>`).join("")+
       (D.keyless?`<tr><td colspan="5">Radnici: za njihovu zaradu treba API ključ</td></tr>`:`<tr><td colspan="4">Radnici: dobit posle plata (plate za 24h: ${fmt(D.wagesPaid24h,1)})</td><td class="n">${D.firmsWorkers>=0?"+":""}${fmt(D.firmsWorkers,1)}</td></tr>`)+
-      `<tr><td colspan="4">Tvoj rad u svojoj firmi (preduzetništvo)</td><td class="n">+${fmt(selfInc(),1)}</td></tr>`+`<tr><td colspan="4">Tvoj rad kod drugog (energija, najbolja ponuda posla ${fmt(D.econ?.jobW||0,3)} coin/PP neto)</td><td class="n">+${fmt(jobInc(),1)}</td></tr>`+
+      `<tr><td colspan="4">Tvoj rad u svojoj firmi (preduzetništvo)</td><td class="n">+${fmt(selfInc(),1)}</td></tr>`+`<tr><td colspan="4">Tvoj rad kod drugog (energija, ${D.econ?.jobNote||""})</td><td class="n">+${fmt(jobInc(),1)}</td></tr>`+
       `<tr><td colspan="4"><strong>Ukupno dnevno</strong></td><td class="n"><strong>${fmt(D.firmsTotal+radInc(),1)}</strong></td></tr>`;
     firmNote.textContent="prodajna cena minus sirovina, sa bonusom regiona";
   } else {tFirms.innerHTML=`<tr><td>Podaci o firmama trenutno nisu dostupni, pa koristim poslednju poznatu zaradu (${fmt(D.firmsTotal)} dnevno).</td></tr>`}
@@ -1193,7 +1193,14 @@ async function loadUser(name){
       countries:countries.map(c=>({id:c._id,n:c.name,spec:c.specializedItem,pct:c.strategicResources?.bonuses?.productionPercent||0,ind:null,party:c.rulingParty})),
       sk:{entV:sk.entrepreneurship.value,entR:sk.entrepreneurship.hourlyBarRegen||0,prod:sk.production.value,comp:sk.companies.value,mgmt:sk.management.value,nFirms:comps.length,lv:{companies:sk.companies.level||0,entrepreneurship:sk.entrepreneurship.level||0,production:sk.production.level||0,management:sk.management.level||0}}};
     D.econ.sk.enR=(sk.energy||{}).hourlyBarRegen||0;
-    try{const wo=await api("workOffer.getWorkOffersPaginated",{limit:5,energy:(sk.energy||{}).value||0,production:sk.production.value||0,level:user.leveling?.level||1});D.econ.jobW=Math.max(0,...(wo.items||[]).map(o=>o.wageAfterTax||0))}catch(e){}
+    // posao kod drugog: trenutni poslodavac iz profila, plata iz spiska radnika (traži API ključ), porez na dohodak države gde je firma
+    D.econ.jobW=0;D.econ.jobNote="nemaš posao kod drugog";
+    try{const fu=await api("user.getUserById",{userId:user._id});const co=fu.company?await api("company.getById",{companyId:fu.company}):null;
+      if(co&&co.user!==user._id){const rg=await region(co.region),tax=((countries.find(c=>c._id===rg.country)||{}).taxes||{}).income||0;let w=null;
+        if(KEY)try{const ws=await api("worker.getWorkers",{companyId:co._id},true);const mw=(ws.workers||[]).find(x=>x.user===user._id);if(mw)w=mw.wage}catch(e){}
+        if(w!=null){D.econ.jobW=w*(1-tax/100);D.econ.jobNote=`kod „${co.name}”, plata ${w} po PP, porez ${tax}%`}
+        else{const wo=await api("workOffer.getWorkOffersPaginated",{limit:5,energy:(sk.energy||{}).value||0,production:sk.production.value||0,level:user.leveling?.level||1}).catch(()=>({items:[]}));
+          D.econ.jobW=Math.max(0,...(wo.items||[]).map(o=>o.wageAfterTax||0));D.econ.jobNote=`kod „${co.name}”; tačna plata traži API ključ, do tada procena po najboljoj ponudi`}}}catch(e){}
     tEcF.innerHTML="";ecSum.textContent="";
     delete plLvl.dataset.set;plOut.hidden=true;plSum.textContent="";if(!document.getElementById("tab-plan").hidden)planFill();
     if(KEY){
@@ -1271,7 +1278,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="6c32d555ea";
+const VKV="e858b51b73";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

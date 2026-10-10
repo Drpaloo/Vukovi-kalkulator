@@ -354,11 +354,10 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
     <h2>Raspored skilova</h2>
     <div class="tbl-wrap"><table class="t" id="tPlSk"></table></div>
     <p class="hint" id="plReset" style="margin:0"></p>
-    <h2>Gde idu novi poeni</h2>
-    <p class="hint" id="plOrder" style="margin:0"></p>
-    <h2>Dan po dan</h2>
-    <div class="tbl-wrap"><table class="t" id="tPlDay"></table></div>
-    <p class="hint" id="plDayNote" style="margin:0"></p>
+    <h2>Slobodni poeni sada</h2>
+    <p class="hint" id="plFree" style="margin:0"></p>
+    <div id="plNew"><h2>Gde idu novi poeni</h2>
+    <p class="hint" id="plOrder" style="margin:0"></p></div>
   </section>
   </div>
 
@@ -369,6 +368,7 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
     <button id="ecRun" type="button" class="btn">Izračunaj</button>
     <p id="ecSum" style="margin:0"></p>
     <div class="tbl-wrap"><table class="t" id="tEcF"></table></div>
+    <div id="ecHow"></div>
     <p class="hint" id="ecSelf" style="margin:0"></p>
   </section>
   <details class="panel">
@@ -847,7 +847,7 @@ function showTab(t){if(t==="skilovi")setTimeout(skManual,0);if(t==="plan")planFi
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b){showTab(b.dataset.tab);window.scrollTo({top:0})}});
 try{const t=localStorage.getItem("rb-tab");if(t&&document.getElementById("tab-"+t))showTab(t)}catch(e){}
 // duga objašnjenja idu iza „objašnjenje“, kratke poruke ostaju vidljive
-const KEEPH=new Set(["bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf"]);
+const KEEPH=new Set(["bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
 document.querySelectorAll(".wrap .hint, .wrap .foot").forEach(h=>{if(KEEPH.has(h.id)||h.closest("summary,label,#share,#login,.why"))return;
   const d=document.createElement("details");d.className="why";d.innerHTML="<summary>objašnjenje ▾</summary>";h.replaceWith(d);d.appendChild(h);if(h.tagName==="P")h.style.margin="0"});
 // ručni raspored skilova: menjaš nivoe i vidiš štetu i saldo
@@ -872,7 +872,7 @@ const META=[[30,{health:4,hunger:3,attack:6,cc:5,cd:4,armor:2,precision:5,dodge:
 // skil se otključava na nivou igrača (gameConfig)
 const UNL={health:5,cc:5,armor:5,hunger:10,cd:10,dodge:10};
 // XP i nivo izmereni na igračima bez prestiža, čin u % attack bonusa
-const XPL=[[1,0],[6,770],[7,1060],[13,4290],[18,9880],[22,16710],[24,19840],[27,26340],[29,30590],[30,32180],[32,37250],[34,42630],[36,48370],[39,54550],[40,57640],[41,61410],[42,63870],[43,66800],[44,70480],[45,72320],[46,77010],[47,78520],[48,83360],[49,85220],[50,88000]];
+const XPL=[[1,0],[6,770],[7,1060],[13,4290],[18,9880],[22,16710],[24,19840],[27,26340],[29,30590],[30,32180],[32,37250],[34,42630],[36,48370],[39,54550],[40,57640],[41,61410],[42,63870],[43,65600],[44,70480],[45,72320],[46,77010],[47,78520],[48,83360],[49,85220],[50,88000]];
 const RKP=[[0,0],[7,1.75],[21,6.25],[33,10],[41,12.5],[62,19],[72,22],[76,23.25],[80,24.5],[84,25.75],[87,26.75],[90,27.75],[93,28.75],[96,29.5],[99,30.5],[103,31.75],[120,36]];
 const interp=(T,x,a=0,b=1)=>{if(x<=T[0][a])return T[0][b];for(let i=1;i<T.length;i++)if(x<=T[i][a]){const p=T[i-1],q=T[i];return p[b]+(q[b]-p[b])*(x-p[a])/((q[a]-p[a])||1)}return T[T.length-1][b]};
 const lvAt=xp=>interp(XPL,xp,1,0),xpAt=l=>interp(XPL,l,0,1),rankPct=r=>Math.round(interp(RKP,r)*4)/4;
@@ -919,17 +919,21 @@ plRun.addEventListener("click",()=>{
       :`<strong>Nijedan build ne ostaje u plusu</strong> sa ovim prihodom. Probaj manji nivo opreme ili više prihoda.`;
     const cmp=lv===P.lvl,now=cmp&&!same?planEval(L0,o):null;
     if(now)plSum.innerHTML+=` Sa sadašnjim skilovima: ${fk(now.dmg)} štete dnevno, saldo ${sg(now.net)}, pa plan daje ${now.dmg?sg((cur.dmg/now.dmg-1)*100):"+0"}% štete.`;
-    tPlSk.innerHTML=`<tr><th>Skil</th>${cmp?'<th class="n">Sad</th>':""}<th class="n">Iskusni igrači</th><th class="n">Plan</th><th class="n">Vrednost</th></tr>`+
-      SKK.map(k=>`<tr${cmp&&L[k]!==L0[k]?' class="cur"':""}><td>${SKD[k][3]}</td>${cmp?`<td class="n">${L0[k]}</td>`:""}<td class="n">${M[k]}</td><td class="n">${L[k]}</td><td class="n">${skVal(k,L[k])}</td></tr>`).join("")+
-      `<tr><td>Poeni</td>${cmp?`<td class="n">${skCostL(L0)}</td>`:""}<td class="n">${skCostL(M)}</td><td class="n">${skCostL(L)} od ${budget}</td><td></td></tr>`;
+    tPlSk.innerHTML=`<tr><th>Skil</th>${cmp?'<th class="n">Sad</th>':""}<th class="n">Plan</th><th class="n">Vrednost</th></tr>`+
+      SKK.map(k=>`<tr${cmp&&L[k]!==L0[k]?' class="cur"':""}><td>${SKD[k][3]}</td>${cmp?`<td class="n">${L0[k]}</td>`:""}<td class="n">${L[k]}</td><td class="n">${skVal(k,L[k])}</td></tr>`).join("")+
+      `<tr><td>Poeni</td>${cmp?`<td class="n">${skCostL(L0)}</td>`:""}<td class="n">${skCostL(L)} od ${budget}</td><td></td></tr>`;
     const nr=P.lastReset?new Date(Date.parse(P.lastReset)+7*864e5):null,canNow=!nr||nr<=new Date();
     plReset.textContent=!cmp?`Ekonomski skilovi (${eco} poena) ostaju kao kod tebe, zato je za borbu ${budget} poena.`
       :same?"Tvoj raspored je već ovakav, reset ne treba.":`Reset košta oko ${fmt((D.spentPts??0)*0.5)} coina (0,5 po poenu)${canNow?" i možeš odmah.":`, a možeš tek od ${nr.toLocaleString("sr-Latn",{weekday:"long",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}.`} Ekonomski skilovi (${eco} poena) ostaju isti.`;
     const lvEnd=rows[rows.length-1].lv,left=rows[rows.length-1].free;
     plOrder.textContent=(order.length?order.map((x,i)=>`${i+1}. ${x}`).join(" · ")+". ":lvEnd>lv?"":`Za 7 dana ne dobijaš novi nivo (oko ${xpd} XP dnevno), pa raspored ostaje isti cele nedelje.`)+
       (left?`${left} poena čuvaj: sledeći nivo skila koji pomaže košta više nego što imaš, a skuplji nivo vredi više od rasipanja na sitno.`:"");
-    tPlDay.innerHTML=`<tr><th>Dan</th><th class="n">Nivo</th><th>Novi skil</th><th class="n">Šteta</th><th class="n">Saldo</th></tr>`+rows.map(r=>`<tr><td>${r.d}.</td><td class="n">${r.lv}</td><td>${r.add.join(", ")||"–"}${r.free?` <span class="hint">(${r.free} čeka)</span>`:""}</td><td class="n">${fk(r.dmg)}</td><td class="n">${sg(r.net)}</td></tr>`).join("");
-    plDayNote.textContent="Nivo po danu je procena iz XP-a igrača sa sličnim nivoom. Šteta i saldo su po danu, po današnjim cenama i istom buildu opreme.";
+    {const fr=D.freePts??0;let F={...L0},left=fr,c0=planEval(F,o);const put=[];
+      if(cmp)for(;;){let b=null;for(const k of SKK){const T={...F};T[k]++;if(!skOk(T,lv)||T[k]>left)continue;const r=planEval(T,o),g=(r.dmg-c0.dmg)/T[k];if(g>0&&(!b||g>b.g))b={k,g,r}}
+        if(!b)break;left-=F[b.k]+1;F[b.k]++;c0=b.r;put.push(`${SKD[b.k][3]} ${F[b.k]-1} → ${F[b.k]}`)}
+      plFree.textContent=!cmp?"Važi samo za tvoj nivo.":!fr?"Nemaš neraspoređenih poena.":
+        put.length?`Imaš ${fr} slobodnih poena. Bez reseta stavi: ${put.join(", ")}${left?`, a ${left} ${left===1?"poen čuvaj":"poena čuvaj"} za sledeći nivo`:""}. Šteta raste na oko ${fk(c0.dmg)} dnevno. Kad uradiš reset, svi poeni idu po planu iz tabele gore.`
+        :`Imaš ${fr} slobodnih poena, ali nijedan sledeći nivo skila ne staje u njih ili ne diže štetu. Čuvaj ih.`}
   };setTimeout(step,0)});
 // ---- Ekonomija: najisplativiji proizvod i država po firmi ----
 const CONSTR_=new Set(["limestone","iron","concrete","steel"]);
@@ -960,6 +964,21 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
   tEcF.innerHTML=`<tr><th>Firma</th><th>Sad</th><th class="n">Coins / dan</th><th>Predlog</th><th class="n">Coins / dan</th></tr>`+recs.map(({f,r,st,cur,change})=>
     `<tr${change?' class="cur"':""}><td>${f.name} <span class="hint">L${f.engine}</span></td><td>${itName(f.item)} +${fmt(f.bonus)}%</td><td class="n">${fmt(cur,1)}</td>`+
     `<td>${change?`${itName(r.it)}${r.c&&(!f.country||r.c.id!==f.country)?` u ${r.c.n}`:""} +${fmt(r.b)}%<br><span class="hint">${r.it!==f.item?"promeni proizvod":""}${r.it!==f.item&&r.c&&r.c.id!==f.country?", ":""}${r.c&&r.c.id!==f.country?"preseli":""} (${fmt(r.cost,1)} coina)</span>${st&&r.c&&r.c.id!==f.country?`<br><span class="hint">bez selidbe: ${itName(st.it)} +${fmt(st.b)}%, ${fmt((st.v7+st.cost)/7,1)} dnevno</span>`:""}`:"ostavi"}</td><td class="n">${fmt((r.v7+r.cost)/7,1)}</td></tr>`).join("");
+  // korak po korak: šta kupiti na marketu, šta proizvoditi i prodati, po grupi istih predloga
+  const G={};recs.forEach(x=>{const r=x.r,key=r.it+"|"+(r.c?r.c.id:"");(G[key]=G[key]||{r,list:[]}).list.push(x)});
+  ecHow.innerHTML=Object.values(G).map(({r,list})=>{const it=r.it,x=E.items[it],P=E.prices,n=list.length;
+    const pp=list.reduce((t,{f})=>t+f.engine*24*(1+r.b/100),0)/n,units=pp/x.pp,needs=Object.entries(x.needs);
+    const moved=list.filter(({f})=>r.c&&r.c.id!==f.country).length,changed=list.filter(({f})=>f.item!==it).length;
+    const steps=[];
+    if(moved)steps.push(`Preseli ${moved===n?"":moved+" od "}${n===1?"firmu":"ove firme"} u ${r.c.n}: u firmi klikni ⋮ pa <b>Move Company</b> i izaberi bilo koji region te države. Košta 5 concrete-a (oko ${fmt(5*(P.concrete||0),1)} coina) po firmi.`);
+    if(changed)steps.push(`Promeni proizvod na <b>${itName(it)}</b>: ⋮ pa promena proizvoda, isto 5 concrete-a po firmi.`);
+    // isplati li se kupiti sirovinu: PP potrošen na sirovinu vredi manje nego PP potrošen na ovaj proizvod
+    const buy=needs.every(([i])=>(P[i]||0)/((E.items[i]||{}).pp||1)<=(1+r.b/100)*ecVpp(E,it));
+    if(needs.length)steps.push(`Sirovinu ${buy?"<b>kupuj gotovu na marketu</b>, ne pravi je sam":"možeš i sam da praviš, ali je kupovina jednostavnija"}: ${needs.map(([i,q])=>`${fmt(units*q,0)} ${itName(i)} dnevno po firmi (oko ${fmt(units*q*(P[i]||0),1)} coina)`).join(", ")}. Firma ne proizvodi ništa ako u njoj nema sirovine.${buy?" PP koje bi potrošio na sirovinu vrede više kad ih firma potroši na ovaj proizvod.":""}`);
+    else steps.push(`${itName(it)} ne traži sirovinu, firma pravi iz samih PP.`);
+    steps.push(`Kad se skupe PP, klikni <b>Produce</b>. Dobijaš oko ${fmt(units,0)} ${itName(it)} dnevno po firmi. Prodaj na marketu po oko ${fmt(P[it]||0,3)} coina, to je oko ${fmt(units*(P[it]||0),1)} coina dnevno${needs.length?" pre troška sirovine":""}.`);
+    if(x.ammo)steps.push(`Pravi samo municiju koju ovde predlažem. Ostale vrste imaju drugačiju cenu i sirovinu, pa ne donose isto.`);
+    return`<div style="margin-top:6px"><strong>${n} ${n===1?"firma":"firme"}${moved||changed?"":(n===1?" ostaje":" ostaju")}: ${itName(it)}${r.c?` u ${r.c.n}`:""}</strong><ol style="margin:6px 0 0 18px;padding:0">${steps.map(t=>`<li style="margin:3px 0">${t}</li>`).join("")}</ol></div>`}).join("");
   const ch=recs.filter(x=>x.change).length;
   ecSum.innerHTML=!D.firms.length?"Nemaš aktivnih firmi.":ch?`<strong>Promeni ${ch} od ${recs.length} firmi.</strong> Motori sada donose oko ${fmt(totNow,1)} coina dnevno, a posle promena oko ${fmt(totNew,1)}. Za 7 dana to je ${sg(gain)} coina posle troška selidbe.`
     :`<strong>Tvoje firme su već na najboljem mestu.</strong> Nijedna promena se ne vraća za 7 dana. Motori donose oko ${fmt(totNow,1)} coina dnevno.`;

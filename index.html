@@ -220,6 +220,8 @@ details.det>summary{cursor:pointer;color:var(--brass);font-size:14px}details.det
   </nav>
   <div class="tab" id="tab-pregled">
     <div class="ovg" id="ovGrid"></div>
+    <div class="btnrow" style="margin-top:14px"><button id="hardReset" type="button" class="btn ghost" style="flex:1 1 100%">Resetuj kalkulator (ako se nešto zaglavi)</button></div>
+    <p class="hint" id="resetNote" style="margin-top:6px">Briše sačuvana podešavanja u ovom browseru i učitava stranicu ponovo. Ime i ključ ostaju.</p>
   </div>
   <div class="tab" id="tab-danas" hidden>
   <div class="btnrow topact" style="margin:0"><button id="best" type="button" class="btn">Nađi najveću štetu koja je u plusu</button><button id="reset" type="button" class="btn ghost">Vrati opremu koju sad nosiš</button></div>
@@ -890,7 +892,7 @@ function showTab(t){if(t==="skilovi")setTimeout(skManual,0);if(t==="plan")planFi
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b){showTab(b.dataset.tab);window.scrollTo({top:0})}});
 // uvek kreće od Pregleda
 // duga objašnjenja idu iza „objašnjenje“, kratke poruke ostaju vidljive
-const KEEPH=new Set(["plEco","bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
+const KEEPH=new Set(["resetNote","plEco","bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
 document.querySelectorAll(".wrap .hint, .wrap .foot").forEach(h=>{if(KEEPH.has(h.id)||h.closest("summary,label,#share,#login,.why"))return;
   const d=document.createElement("details");d.className="why";d.innerHTML="<summary>objašnjenje ▾</summary>";h.replaceWith(d);d.appendChild(h);if(h.tagName==="P")h.style.margin="0"});
 // ručni raspored skilova: menjaš nivoe i vidiš štetu i saldo
@@ -1098,6 +1100,8 @@ function ovRender(){if(typeof ovGrid==="undefined")return;const b=bestBuild(+bon
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){showTab(g.dataset.go);window.scrollTo({top:0})}});
 {const r0=render;render=function(){r0();try{ovRender()}catch(e){}}}
+hardReset.addEventListener("click",()=>{if(!hardReset.dataset.arm){hardReset.dataset.arm=1;hardReset.textContent="Klikni opet da potvrdiš reset";setTimeout(()=>{delete hardReset.dataset.arm;hardReset.textContent="Resetuj kalkulator (ako se nešto zaglavi)"},4000);return}
+  try{Object.keys(localStorage).filter(k=>/^(rb|vk)-/.test(k)&&k!=="vk-login").forEach(k=>localStorage.removeItem(k))}catch(e){}location.reload()});
 async function api(proc,input,auth){
   const u=API+proc+(input!==undefined?"?input="+encodeURIComponent(JSON.stringify(input)):"");
   const h={};if(auth&&KEY)h["X-API-Key"]=KEY;

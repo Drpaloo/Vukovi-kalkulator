@@ -722,11 +722,16 @@ async function saveImg(){
   try{await dl.save({filename:"warera-build.png",data:blob});repMsg.textContent="Slika je sačuvana."}
   catch(e){repMsg.textContent=e&&e.code==="declined"?"Nisi sačuvao sliku. Možeš i da držiš prst na slici ispod.":"Čuvanje ne radi ovde. Drži prst na slici ispod i izaberi Sačuvaj ili Podeli."}}
 const BT={b:null,side:"att"};
+// baza i bunker: građanin dobija ceo bonus, saveznik pola, ostali ništa (WarEra vodič, potvrđeno u igri 10. 10.)
+function fortShare(c){const me=D.me||{};if(c===me.country)return 1;
+  const al=me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)):(me.allies||[]).includes(c);return al?0.5:0}
+function fort(k,name,lvl,sd){const b=BT.b,f=b?fortShare(b[sd].c):1,n=b?b[sd].n:"";
+  return[k,`${name}${lvl?" nivo "+lvl:""}${lvl&&f<1?(f?", pola jer si saveznik "+n:", ništa jer nisi građanin ni saveznik "+n):""}`,+((lvl||0)*5*f).toFixed(2)]}
 function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // u velikoj bitki igra daje 15% za naredbe (viđeno u igri 9. 10.), inače 10% po gameConfig-u
   const ord=b&&b.big?15:10;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",ord],["mo","Naredba tvog MU",ord],["hq",`MU štab nivo ${hq}`,hq*5],
-    ["bunk",`Bunker u regionu${b&&b.bunker?" nivo "+b.bunker:""} (samo odbrana)`,(b&&b.bunker||0)*5],["base",`Vojna baza u regionu napada${b&&b.base?" nivo "+b.base:""} (samo napad)`,(b&&b.base||0)*5],(me.alliance?["ally",`Savez ${me.alliance.name} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn","Protiv neprijatelja tvoje države (rat)",10],["nolink","Region bez veze sa prestonicom",-25]]}
+    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${me.alliance.name} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn","Protiv neprijatelja tvoje države (rat)",10],["nolink","Region bez veze sa prestonicom",-25]]}
 // bonusi se ne štikliraju: računaju se sami iz bitke i prikazuju kao spisak
 let CK={};
 function drawChecks(on){CK=on||{};const L=checkDefs().filter(([k,,v])=>CK[k]&&v);
@@ -735,7 +740,7 @@ function sumChecks(){return checkDefs().reduce((t,[k,,v])=>t+(CK[k]?v:0),0)}
 function readChecks(){return{...CK}}
 function applyChecks(){if(BT.b)bonus.value=Math.max(0,Math.min(150,sumChecks()))}
 function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],c=sd.c;
-  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0&&!(b.baseAt&&b.baseAt>b.at),sworn:(me.wars||[]).includes(b[BT.side==="att"?"def":"att"].c),nolink:b.linked===false})}
+  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:(me.wars||[]).includes(b[BT.side==="att"?"def":"att"].c),nolink:b.linked===false})}
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
@@ -754,7 +759,7 @@ function sideSeg(){const b=BT.b;side.innerHTML=b?["att","def"].map(k=>`<input ty
 let loadContracts=async b=>{};
 function pickBattle(b,msg){BT.b=b;loadContracts(b).then(ch=>{if(ch&&BT.b===b){setBountyFromBattle();render()}}).catch(()=>{});const me=D.me||{};
   BT.side=["att","def"].find(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu))||["att","def"].find(k=>b[k].c===me.country||(me.allies||[]).includes(b[k].c))||"att";
-  sideSeg();autoChecks();applyChecks();setBountyFromBattle();bInfo.textContent=msg||`${bName(b)}. Bonus je izračunat iz igre za tvoju stranu.`+(BT.side==="att"&&b.base&&b.baseAt&&b.baseAt>b.at?" Vojna baza je nadograđena posle početka bitke. Igra računa nivo s početka bitke, pa bazu ovde ne računam.":"");bPick.value=b.id;render()}
+  sideSeg();autoChecks();applyChecks();setBountyFromBattle();bInfo.textContent=msg||`${bName(b)}. Bonus je izračunat iz igre za tvoju stranu.`;bPick.value=b.id;render()}
 function battleList(){const me=D.me||{},L=(D.activeBattles||[]).filter(b=>["att","def"].some(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu)));
   bPick.innerHTML=`<option value="">${L.length?`Ili izaberi bitku sa naredbom (${L.length})`:"Trenutno nema bitke sa naredbom tvoje države ili MU"}</option>`+L.map(b=>`<option value="${b.id}">${bName(b)}</option>`).join("");
   if(!BT.b)bpHint.textContent=`Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0.`;}
@@ -1282,7 +1287,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="21c568da18";
+const VKV="15d1bebd16";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

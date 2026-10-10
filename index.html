@@ -291,7 +291,7 @@ tr.cur td{background:var(--brass-soft)}
       </fieldset>
       <div class="range">
         <label for="bonus">Ukupan bonus bitke. Sam se računa kad izabereš bitku.</label><output id="bonusO" for="bonus">70%</output>
-        <input type="range" id="bonus" min="0" max="150" step="0.01" value="70">
+        <input type="range" id="bonus" min="-100" max="150" step="0.01" value="70">
       </div>
   </section>
   <section class="panel hero" id="rec" aria-live="polite">
@@ -329,8 +329,8 @@ tr.cur td{background:var(--brass-soft)}
       <fieldset><legend>Hrana</legend><div class="seg" id="food"></div></fieldset>
       <fieldset><legend>Pill svaki dan</legend><div class="seg" id="pill"></div>
         <span class="hint">Glavna sesija je 8h pod pill-om (+60%): pun health i hunger plus 8h regeneracije.</span></fieldset>
-      <fieldset><legend>Druga sesija, ostalih 16h (u minusu od pill-a −60%)</legend><div class="seg" id="s2"></div>
-        <span class="hint">Troši samo health koji se regeneriše van glavne sesije (12 na sat), da ne preliva. Bez jela. Ovde se isplati jeftina oprema.</span></fieldset>
+      <fieldset><legend>Druga sesija, ostalih 16h (pill debuff −60% traje 15,5h)</legend><div class="seg" id="s2"></div>
+        <span class="hint">Troši samo ostatak dnevnog regena (<span id="s2hp">0,6 bara</span>), da glavna sesija sutra opet krene sa punim barom. Bez jela. Ovde se isplati jeftina oprema.</span></fieldset>
       <details class="adv s2f"><summary>Napredno: oprema za drugu sesiju</summary>
       <fieldset><legend>Druga sesija: oružje</legend><div class="seg" id="weap2"></div></fieldset>
       <fieldset><legend>Druga sesija: set</legend><div class="seg" id="armor2"></div></fieldset>
@@ -503,7 +503,8 @@ const okA=(w,m)=>(+w===0)===(m==="none");
 const REC={weap:"4",armor:"3",ammo:"light",food:"steak",pill:"yes",s2:"yes",weap2:"1",armor2:"1",ammo2:"light",bonus:70};
 const Dn=x=>x/(x+40);
 
-function prices(){const p=D.prices;return{
+let _PC=null;
+function prices(){if(_PC)return _PC;const p=D.prices;return{
   food:{bread:p.ask_bread,steak:p.steak,fish:p.ask_cookedFish},
   ammo:{none:0,light:p.ask_lightAmmo,ammo:p.ask_ammo,heavy:p.ask_heavyAmmo},
   pill:p.ask_cocain,c1:Math.max(p.case1,caseOpen()),c2:p.case2}}
@@ -560,7 +561,8 @@ function calc(s){
   const P=prices(),pill=s.pill==="yes";
   const m1=BASE.hunger+Math.floor(BASE.hunger*.1*8);
   const a=sess(s,+s.weap,+s.armor,s.ammo,pill?1.6:1,BASE.health*1.8,m1,s.qs1||(s.q1??50)/100);
-  const b=s.s2==="yes"?sess(s,+s.weap2,+s.armor2,s.ammo2,pill?0.4:1,BASE.health*.1*16,0,s.qs2||(s.q2??50)/100):null;
+  // za 24h igra regeneriše 2,4 bara; glavna sesija troši pun bar + 8h regena (1,8), pa druga sesija dobija samo ostatak 0,6 bara
+  const b=s.s2==="yes"?sess(s,+s.weap2,+s.armor2,s.ammo2,pill?0.4:1,BASE.health*(.1*24-1.8),0,s.qs2||(s.q2??50)/100):null;
   const S=[a,b].filter(Boolean), sum=k=>S.reduce((t,x)=>t+x[k],0);
   const h=sum("h"),dmg=sum("dmg"),meals=sum("meals");
   const num=(el,d)=>{const v=parseFloat(String(el.value).replace(",","."));return isFinite(v)&&v>=0?v:d};
@@ -592,8 +594,11 @@ function setState(s){KEYS.forEach(k=>{const r=document.getElementById(k+"-"+s[k]
   ["q1","q2"].forEach(k=>{if(s[k]==null){const r=document.getElementById(k+"-50");if(r)r.checked=true}});mine.checked=true;if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
 // tekstualno polje da iPhone tastatura sa zarezom radi; zarez i tačka su isto
 function getBP(){const v=parseFloat(String(bp.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
-function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1)bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
-function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=+o.q1;o.q2=+o.q2;return o}
+function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1){bpHint.dataset.warn=1;bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
+  else if(bpHint.dataset.warn){delete bpHint.dataset.warn;bpHint.textContent=BT.b?"Ugovor i bounty za ovu bitku, ručno izmenjeno.":"Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0."}}
+// APQ: kvalitet po komadu iz preporuke ili koda; briše se čim ručno promeniš oružje, set ili kvalitet
+let APQ=null;
+function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=+o.q1;o.q2=+o.q2;if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}return o}
 const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
 const sg=x=>(x>=0?"+":"−")+fmt(Math.abs(x));
@@ -612,7 +617,7 @@ function render(){fixAmmo();
   sVerdict.className="verdict "+(r.net>=0?"ok":"no");sVerdict.textContent=r.net>=0?(r.net<40?"održivo, blagi plus":"održivo, ima prostora"):"u minusu";
   const tot=Math.max(r.I,r.O);barOut.style.width=(r.O/tot*100)+"%";barNet.style.width=(Math.max(0,r.net)/tot*100)+"%";
   barNote.textContent=r.net>=0?`Troškovi pojedu ${fmt(r.O/r.I*100)}% prihoda`:`Troškovi su ${fmt(-r.net)} coins dnevno veći od prihoda`;
-  hitsNote.textContent=`~${fmt(r.h)} udaraca · ${r.meals} obroka`;document.querySelectorAll(".s2f").forEach(f=>f.style.display=s.s2==="yes"?"":"none");
+  hitsNote.textContent=`~${fmt(r.h)} udaraca · ${r.meals} obroka`;if(window.s2hp)s2hp.textContent=`0,6 bara, ${fmt(BASE.health*.6)} health`;document.querySelectorAll(".s2f").forEach(f=>f.style.display=s.s2==="yes"?"":"none");
   const row=(l,v,neg)=>`<tr><td>${l}</td><td>${neg?"−":"+"}${fmt(v,1)}</td></tr>`;
   ledger.innerHTML=`<tr class="sec"><td colspan="2">Prihod</td></tr>`+
     row(firmMan.value===""?"Firme (iz API-ja)":"Firme (upisao si ručno)",r.inc.firms)+row("Tvoj rad (svoja firma i posao kod drugog)",r.inc.rad)+row(`Case-ovi sa pogođenih udaraca (loot ${BASE.loot}%)`,r.inc.cases)+row("Wooden case-ovi",r.inc.wooden)+row("Pool loot iz bitaka",r.inc.pool)+
@@ -660,11 +665,16 @@ const FDN={bread:"bread",steak:"steak",fish:"ribu"};
 const WINS=["nožem","pištoljem","puškom","snajperom","tankom","avionom"],SETM=["sivi","zeleni","plavi","ljubičasti","žuti","crveni"];
 let RECB=null,RECK="";
 const hasFit=()=>Object.values(D.equipment||{}).some(e=>e&&e.a!=null);
-function bestBuild(bonus,bpo){
+// tokom traženja cene su iste, pa ih računamo jednom (inače je ovo najsporiji deo)
+function bestBuild(bonus,bpo){const own=!_PC;if(own)_PC=prices();try{return bestBuild0(bonus,bpo)}finally{if(own)_PC=null}}
+// dugi proračuni puštaju stranicu da diše svakih ~40 ms, da se ne zamrzne
+let _ty=0;const yld=()=>new Promise(r=>{if(performance.now()-_ty<40)return r();setTimeout(()=>{_ty=performance.now();r()},0)});
+function bestBuild0(bonus,bpo){
   // bez cena po kvalitetu jača oprema izgleda besplatno, pa tad preporuka ne bira kvalitet nego koristi klizače
   const cs=getState(),QS=hasFit()?[0,50,100]:[cs.q1],QS2=hasFit()?[0,50,100]:[cs.q2];
   const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+mine.checked+"|"+getState().q1+"|"+getState().q2+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey();if(key===RECK)return RECB;
-  const base={...REC,bonus,bp:bpv,pill:"yes",mine:mine.checked?"yes":"no"};
+  // pill menja i glavnu sesiju (+60%) i drugu (−60% debuff), pa se svaka varijanta traži posebno
+  let best=null;for(const pill of["yes","no"]){const base={...REC,bonus,bp:bpv,pill,mine:mine.checked?"yes":"no"};
   // saldo i šteta se sabiraju po sesijama, pa glavnu i drugu sesiju tražimo odvojeno i spajamo
   const M=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
     const st={...base,s2:"no",weap:String(w),armor:String(a),ammo,food,q1:q},r=calc(st);M.push({st,dmg:r.dmg,net:r.net})}
@@ -672,7 +682,7 @@ function bestBuild(bonus,bpo){
   const S2=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const m of["none","light","ammo"])for(const q of QS2){if(!okA(w,m))continue;
     const o={weap2:String(w),armor2:String(a),ammo2:m,q2:q},r=calc({...base,s2:"yes",weap:"0",armor:"0",ammo:"none",food:"bread",q1:0,...o});
     S2.push({o,dd:r.dmg-z.dmg,dn:r.net-z.net})}
-  let best=null;for(const x of M)for(const y of S2){const n=x.net+y.dn;if(n>=0){const d=x.dmg+y.dd;if(!best||d>best.d)best={d,st:{...x.st,s2:"yes",...y.o}}}}
+  for(const x of M)for(const y of S2){const n=x.net+y.dn;if(n>=0){const d=x.dmg+y.dd;if(!best||d>best.d)best={d,st:{...x.st,s2:"yes",...y.o}}}}}
   if(best&&hasFit())best.st=tuneQ(best.st);
   const res=best?{s:best.st,r:calc(best.st)}:null;RECK=key;RECB=res;return res;
 }
@@ -717,7 +727,7 @@ function renderRec(){
   const QN=q=>q<=0?"min":q>=100?"max":"srednji";
   const line=(w,a,q,qs,am,fd,h)=>`${rn(+w,WNAME[+w])} · ${rn(+a,SETM[+a])} set${qs?"":", "+QN(q)} · ${AMS[am]}${fd?" · "+FDS[fd]:""} · ~${fmt(h)} udaraca`;
   recSteps.innerHTML=
-    `<div class="rrow"><span class="k">Glavna sesija · 8h · pill na početku</span><span class="v2">${line(s.weap,s.armor,s.q1,s.qs1,s.ammo,s.food,r.s1.h)}</span></div>`+
+    `<div class="rrow"><span class="k">Glavna sesija · 8h${s.pill==="yes"?" · pill na početku":" · bez pill-a"}</span><span class="v2">${line(s.weap,s.armor,s.q1,s.qs1,s.ammo,s.food,r.s1.h)}</span></div>`+
     `<div class="rrow"><span class="k">Ostatak dana · bez jela</span><span class="v2">${line(s.weap2,s.armor2,s.q2,s.qs2,s.ammo2,null,r.s2.h)}</span></div>`+
     `<div class="rrow"><span class="k">Oprema</span><span>${gearWords(r)}</span></div>`+
     `<details class="det" open><summary>Statovi i cena opreme</summary><p class="hint" style="margin:4px 0">Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj koji daje najviše štete za novac.</p><p style="margin:6px 0 2px"><strong>Glavna sesija</strong></p>${gearStats(r.s1,!!s.qs1)}<p style="margin:6px 0 2px"><strong>Ostatak dana</strong></p>${gearStats(r.s2,!!s.qs2)}</details>`;
@@ -726,10 +736,13 @@ function renderRec(){
   window._rec=s;
 }
 const AMS={none:"bez municije",light:"zelena municija",ammo:"obična municija",heavy:"heavy municija"},FDS={bread:"bread",steak:"steak",fish:"riba"};
-function encode(s){return"RB1-"+[s.weap,s.armor,s.ammo,s.food,s.pill,s.s2,s.weap2,s.armor2,s.ammo2,s.bonus].join(".")+"-"+(+s.bp.toFixed(3))+"-"+s.q1+"."+s.q2}
-function decode(t){const m=String(t).match(/RB1-([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(bread|steak|fish)\.(yes|no)\.(yes|no)\.([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(\d{1,3})(?:-(\d+(?:\.\d+)?))?(?:-(\d{1,3})\.(\d{1,3}))?/);
-  if(!m)return null;const b=Math.min(150,Math.round(+m[10]/5)*5);
-  return{weap:m[1],armor:m[2],ammo:m[3],food:m[4],pill:m[5],s2:m[6],weap2:m[7],armor2:m[8],ammo2:m[9],bonus:b,bp:m[11]!=null?+m[11]:null,q1:m[12]!=null?Math.min(100,+m[12]):50,q2:m[13]!=null?Math.min(100,+m[13]):50}}
+// kod nosi tačan bonus (i decimale) i, ako postoji, kvalitet po komadu za obe sesije
+function encode(s){return"RB1-"+[s.weap,s.armor,s.ammo,s.food,s.pill,s.s2,s.weap2,s.armor2,s.ammo2,(s.bonus<0?"n":"")+Math.abs(+(+s.bonus).toFixed(2))].join(".")+"-"+(+s.bp.toFixed(3))+"-"+s.q1+"."+s.q2+
+  (s.qs1&&s.qs2?"-P"+[...QSL.map(k=>Math.round(s.qs1[k]*100)),...QSL.map(k=>Math.round(s.qs2[k]*100))].join("."):"")}
+function decode(t){const m=String(t).match(/RB1-([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(bread|steak|fish)\.(yes|no)\.(yes|no)\.([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(n?\d{1,3}(?:\.\d{1,2})?)(?:-(\d+(?:\.\d+)?))?(?:-(\d{1,3})\.(\d{1,3}))?(?:-P((?:\d{1,3}\.){11}\d{1,3}))?/);
+  if(!m)return null;const b=Math.max(-100,Math.min(150,+m[10].replace("n","-"))),P=m[14]?m[14].split(".").map(x=>Math.min(100,+x)/100):null,
+    qo=o=>Object.fromEntries(QSL.map((k,i)=>[k,P[o+i]]));
+  return{weap:m[1],armor:m[2],ammo:m[3],food:m[4],pill:m[5],s2:m[6],weap2:m[7],armor2:m[8],ammo2:m[9],bonus:b,bp:m[11]!=null?+m[11]:null,q1:m[12]!=null?Math.min(100,+m[12]):50,q2:m[13]!=null?Math.min(100,+m[13]):50,...(P?{qs1:qo(0),qs2:qo(QSL.length)}:{})}}
 function reportLines(){
   const s=getState(),r=calc(s);
   const L=[[`WarEra build · ${D.me.username||"?"}${D.me.muName?" (MU "+D.me.muName+")":""}`,"h"],
@@ -777,16 +790,18 @@ function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // u velikoj bitki igra daje 15% za naredbe (viđeno u igri 9. 10.), inače 10% po gameConfig-u
   const ord=b&&b.big?15:10;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",ord],["mo","Naredba tvog MU",ord],["hq",`MU štab nivo ${hq}`,hq*5],
-    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${me.alliance.name} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn","Protiv neprijatelja tvoje države (rat)",10],["nolink","Region bez veze sa prestonicom",-25]]}
+    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${me.alliance.name} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn","Protiv neprijatelja tvoje države (rat)",10],["nolink","Region bez veze sa prestonicom",-25],
+    // gameConfig battle: occupyingYourRegionsMalusPercent −50, lostAttackingRegionMalusPercent −25 (oba se vide u tooltipu bonusa u igri)
+    ["occ",`${b?b[BT.side].n:"Ova strana"} drži region tvoje države`,-50],["lost","Napadač je izgubio region iz kog napada",-25]]}
 // bonusi se ne štikliraju: računaju se sami iz bitke i prikazuju kao spisak
 let CK={};
 function drawChecks(on){CK=on||{};const L=checkDefs().filter(([k,,v])=>CK[k]&&v);
   bChecks.innerHTML=BT.b?(L.length?L.map(([k,l,v])=>`<div class="ckrow">${l}<span class="n">${v>0?"+":""}${v}%</span></div>`).join("")+`<div class="ckrow ckt">Ukupno<span class="n">${+sumChecks().toFixed(2)}%</span></div>`:`<div class="ckrow">Nemaš bonus u ovoj bitki</div>`):""}
 function sumChecks(){return checkDefs().reduce((t,[k,,v])=>t+(CK[k]?v:0),0)}
 function readChecks(){return{...CK}}
-function applyChecks(){if(BT.b)bonus.value=Math.max(0,Math.min(150,sumChecks()))}
+function applyChecks(){if(BT.b)bonus.value=Math.max(-100,Math.min(150,sumChecks()))}
 function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],c=sd.c;
-  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:(me.wars||[]).includes(b[BT.side==="att"?"def":"att"].c),nolink:b.linked===false})}
+  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:(me.wars||[]).includes(b[BT.side==="att"?"def":"att"].c),nolink:b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
@@ -813,14 +828,8 @@ async function loadLink(){const m=bLink.value.match(/[a-f0-9]{24}/i);if(!m){bInf
   bInfo.textContent="Učitavam bitku…";
   try{const b=await battleById(m[0].toLowerCase());pickBattle(b,b.active?null:`${bName(b)}. Ova bitka je završena, ali bonusi su popunjeni.`)}
   catch(e){BT.b=null;sideSeg();drawChecks(readChecks());bInfo.textContent="Ne mogu da učitam tu bitku. Proveri link ili pomeri bonus ručno."}}
-function findBest(){
-  const cur=getState();let best=null;
-  const s2opts=cur.s2==="yes"?[].concat(...[0,1,2,3,4,5].map(w=>[].concat(...[0,1,2,3,4,5].map(a=>["none","light","ammo"].filter(m=>okA(w,m)).map(m=>({weap2:String(w),armor2:String(a),ammo2:m})))))):[{}];
-  for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const pill of["yes","no"])for(const o of s2opts){if(!okA(w,ammo))continue;
-    const s={...cur,weap:String(w),armor:String(a),ammo,food,pill,...o},r=calc(s);
-    if(r.net>=0&&(!best||r.dmg>best.r.dmg))best={s,r};}
-  if(best){setState(best.s);render()}
-}
+// isto što i preporuka (i sa i bez pill-a), samo se odmah upiše u „Probaj svoj build“
+function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x={...b.s};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render()}
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
@@ -855,6 +864,7 @@ let saved=null;
 function onCtl(e){const t=e.target;
   if(t.id&&t.id.startsWith("ck-"))applyChecks();
   if(t.id==="bp")bpCheck();
+  if(["weap","armor","weap2","armor2","q1","q2"].includes(t.name))APQ=null;
   if(t.name==="side"){BT.side=t.value;autoChecks();applyChecks();setBountyFromBattle()}
   if(t.id==="bLink"||t.id==="bPick")return;
   try{localStorage.setItem("vk-checks",JSON.stringify(readChecks()))}catch(x){}
@@ -866,7 +876,7 @@ bLink.addEventListener("keydown",e=>{if(e.key==="Enter")loadLink()});
 bPick.addEventListener("change",async()=>{if(!bPick.value)return;bInfo.textContent="Učitavam bitku…";try{pickBattle(await battleById(bPick.value))}catch(e){bInfo.textContent="Ne mogu da učitam tu bitku."}});
 // dugmad su gore, a rezultat se vidi u „Probaj svoj build“, pa ga otvaramo
 const openTry=()=>{const d=document.getElementById("weap").closest("details");if(d&&!d.open)d.open=true;if(d)setTimeout(()=>d.scrollIntoView({behavior:"smooth",block:"start"}),50)};
-reset.addEventListener("click",()=>{setState({...getState(),...(CUR||{})});render();openTry()});
+reset.addEventListener("click",()=>{APQ=null;setState({...getState(),...(CUR||{})});render();openTry()});
 best.addEventListener("click",()=>{findBest();openTry()});
 repOpen.addEventListener("click",()=>openShare("rep"));
 codeOpen.addEventListener("click",()=>openShare("code"));
@@ -874,9 +884,9 @@ shareClose.addEventListener("click",()=>{share.hidden=true});
 repCopy.addEventListener("click",copyText);
 repImg.addEventListener("click",saveImg);
 codeLoad.addEventListener("click",()=>{const st=decode(codeIn.value);if(!st){codeMsg.textContent="Ne prepoznajem kod. Treba da počinje sa RB1-.";return}
-  setState(st);render();codeMsg.textContent="Učitano. Kalkulator ispod sada prikazuje kolegin build sa tvojim skilovima i cenama.";});
+  setState(st);APQ=st.qs1?{qs1:st.qs1,qs2:st.qs2}:null;render();codeMsg.textContent="Učitano. Kalkulator ispod sada prikazuje kolegin build sa tvojim skilovima i cenama.";});
 const qNear=o=>{const v=QSL.reduce((t,k)=>t+o[k],0)/QSL.length*100;return v<25?0:v>75?100:50};
-recApply.addEventListener("click",()=>{if(window._rec){const x={...window._rec};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);render();document.querySelector(".strip").scrollIntoView({behavior:"smooth"})}});
+recApply.addEventListener("click",()=>{if(window._rec){const x={...window._rec};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render();document.querySelector(".strip").scrollIntoView({behavior:"smooth"})}});
 function craftPanel(){
   const m=D.craftMats||FALLBACK.craftMats,sP=m.scraps.bid,tP=m.steel.ask,T=craftTiers(),hasAlb=T.some(t=>t.alb!=null);
   craftNote.textContent=`Nasumična izrada daje bilo koji komad te boje: oružje 30%, svaki deo seta 14%, a kvalitet je nasumičan. Vrednost je prosečna tržišna cena onoga što padne`+
@@ -925,11 +935,15 @@ skRun.addEventListener("click",()=>{
   const budget=SKK.reduce((t,k)=>t+skCost(L0[k]),0)+free,d0=skEval(L0,B);let L={...L0},cur=d0,it=0;
   skRun.disabled=true;skAdvice.textContent="Računam za više bitaka…";
   // pomeraj po jedan nivo iz skila u skil; potez prolazi samo ako nijedna bitka ne gubi štetu, a najslabiji dobitak raste
-  const step=()=>{let bestM=null;const g=minGain(cur,d0);
-    for(const i of [null,...SKK])for(const j of SKK){if(i===j)continue;const T={...L};if(i){if(T[i]<=0)continue;T[i]--}
-      if(T[j]>=10)continue;T[j]++;if(budget-SKK.reduce((t,k)=>t+skCost(T[k]),0)<0)continue;
-      const d=skEval(T,B),ng=minGain(d,d0);if(ng>g+0.002&&(!bestM||ng>bestM.g))bestM={g:ng,d,T}}
-    if(bestM&&it++<40){L=bestM.T;cur=bestM.d;skAdvice.textContent=`Računam… sigurno +${fmt((bestM.g-1)*100,1)}%`;setTimeout(step,0)}else done()};
+  // prvo svaki skil sam za nivo gore i dole, pa probaj samo najjače parove (umesto svih 81 poteza)
+  const step=async()=>{let bestM=null;const g=minGain(cur,d0),up=[],dn=[];_ty=performance.now();
+    for(const k of SKK){if(L[k]<10){up.push({k,g:minGain(skEval({...L,[k]:L[k]+1},B),d0)});await yld()}
+      if(L[k]>0){dn.push({k,g:minGain(skEval({...L,[k]:L[k]-1},B),d0)});await yld()}}
+    up.sort((a,b)=>b.g-a.g);dn.sort((a,b)=>b.g-a.g);
+    for(const i of[null,...dn.slice(0,3).map(x=>x.k)])for(const j of up.slice(0,3).map(x=>x.k)){if(i===j)continue;const T={...L};if(i)T[i]--;T[j]++;
+      if(budget-SKK.reduce((t,k)=>t+skCost(T[k]),0)<0)continue;
+      const d=skEval(T,B),ng=minGain(d,d0);await yld();if(ng>g+0.002&&(!bestM||ng>bestM.g))bestM={g:ng,d,T}}
+    if(bestM&&it++<40){L=bestM.T;cur=bestM.d;skAdvice.textContent=`Računam, korak ${it}… sigurno +${fmt((bestM.g-1)*100,1)}%`;setTimeout(step,0)}else done()};
   const done=()=>{skRun.disabled=false;tSk.dataset.done=1;const g=minGain(cur,d0),same=SKK.every(k=>L[k]===L0[k]);
     tSk.innerHTML=`<tr><th>Skil</th><th class="n">Sad</th><th class="n">Predlog</th><th class="n">Vrednost</th></tr>`+SKK.map(k=>`<tr${L[k]!==L0[k]?' class="cur"':""}><td>${SKD[k][3]}</td><td class="n">${L0[k]}</td><td class="n">${L[k]}${L[k]!==L0[k]?` (${L[k]>L0[k]?"+":""}${L[k]-L0[k]})`:""}</td><td class="n">${BASE[k]} → ${skVal(k,L[k])}</td></tr>`).join("")+
       ((D.econ&&D.econ.sk&&D.econ.sk.lv)?`<tr><th colspan="4">Ekonomski skilovi (ovde ostaju isti, da li ih dirati računa kartica Plan)</th></tr>`+Object.keys(ECOD).map(k=>{const l=D.econ.sk.lv[k]||0;return`<tr><td>${ECOD[k][0]}</td><td class="n">${l}</td><td class="n">${l}</td><td class="n">${ecoVal(k,l)}</td></tr>`}).join(""):"")+
@@ -1011,17 +1025,20 @@ plRun.addEventListener("click",()=>{
   let L=metaFor(lv,budget);const M={...L};let cur=planEval(L,o),it=0;
   plRun.disabled=true;plOut.hidden=true;plSum.textContent="Računam…";
   // menjaj po jedan nivo iz skila u skil (ili potroši slobodne poene) dok šteta raste, a saldo ostaje u plusu
-  const step=()=>{let best=null;
-    for(const i of[null,...SKK])for(const j of SKK){if(i===j)continue;const T={...L};if(i)T[i]--;T[j]++;
-      if(!skOk(T,lv)||skCostL(T)>budget)continue;const r=planEval(T,o);if(r.dmg>cur.dmg*1.002&&(!best||r.dmg>best.r.dmg))best={T,r}}
-    if(best&&it++<60){L=best.T;cur=best.r;plSum.textContent=`Računam… ${fk(cur.dmg)} štete dnevno`;setTimeout(step,0)}else week()};
-  const week=()=>{
+  const step=async()=>{let best=null;const up=[],dn=[];_ty=performance.now();
+    for(const k of SKK){const U={...L,[k]:L[k]+1},Dd={...L,[k]:L[k]-1};
+      if(skOk(U,lv)){up.push({k,d:planEval(U,o).dmg});await yld()}if(skOk(Dd,lv)){dn.push({k,d:planEval(Dd,o).dmg});await yld()}}
+    up.sort((a,b)=>b.d-a.d);dn.sort((a,b)=>b.d-a.d);
+    for(const i of[null,...dn.slice(0,3).map(x=>x.k)])for(const j of up.slice(0,3).map(x=>x.k)){if(i===j)continue;const T={...L};if(i)T[i]--;T[j]++;
+      if(!skOk(T,lv)||skCostL(T)>budget)continue;const r=planEval(T,o);await yld();if(r.dmg>cur.dmg*1.002&&(!best||r.dmg>best.r.dmg))best={T,r}}
+    if(best&&it++<60){L=best.T;cur=best.r;plSum.textContent=`Računam, korak ${it}… ${fk(cur.dmg)} štete dnevno`;setTimeout(step,0)}else week()};
+  const week=async()=>{
     // 7 dana: XP raste, svaki novi nivo daje 4 poena; poen ide tamo gde najviše diže štetu po potrošenom poenu
     let W={...L},free=budget-skCostL(W),xp=lvBase,lvP=lv,c=cur;const rows=[],order=[];
     for(let d=1;d<=7;d++){xp+=xpd;const nl=Math.min(50,Math.floor(lvAt(xp)+1e-9));const add=[];
       if(nl>lvP){free+=4*(nl-lvP);lvP=nl}
       for(;;){let b=null;for(const k of SKK){const T={...W};T[k]++;if(!skOk(T,lvP))continue;
-          const need=T[k];if(need>free)continue;const r=planEval(T,o),g=(r.dmg-c.dmg)/need;if(g>0&&(!b||g>b.g))b={k,g,r,need}}
+          const need=T[k];if(need>free)continue;await yld();const r=planEval(T,o),g=(r.dmg-c.dmg)/need;if(g>0&&(!b||g>b.g))b={k,g,r,need}}
         if(!b)break;W[b.k]++;free-=b.need;c=b.r;add.push(`${SKD[b.k][3]} ${W[b.k]}`);order.push(`${SKD[b.k][3]} na ${W[b.k]} (nivo ${lvP})`)}
       rows.push({d,lv:lvP,add,free,dmg:c.dmg,net:c.net})}
     plRun.disabled=false;plOut.hidden=false;
@@ -1043,7 +1060,7 @@ plRun.addEventListener("click",()=>{
     plOrder.textContent=(order.length?order.map((x,i)=>`${i+1}. ${x}`).join(" · ")+". ":lvEnd>lv?"":`Za 7 dana ne dobijaš novi nivo (oko ${xpd} XP dnevno), pa raspored ostaje isti cele nedelje.`)+
       (left?`${left} poena čuvaj: sledeći nivo skila koji pomaže košta više nego što imaš, a skuplji nivo vredi više od rasipanja na sitno.`:"");
     {const fr=D.freePts??0;let F={...L0},left=fr,c0=planEval(F,o);const put=[];
-      if(cmp)for(;;){let b=null;for(const k of SKK){const T={...F};T[k]++;if(!skOk(T,lv)||T[k]>left)continue;const r=planEval(T,o),g=(r.dmg-c0.dmg)/T[k];if(g>0&&(!b||g>b.g))b={k,g,r}}
+      if(cmp)for(;;){let b=null;for(const k of SKK){const T={...F};T[k]++;if(!skOk(T,lv)||T[k]>left)continue;await yld();const r=planEval(T,o),g=(r.dmg-c0.dmg)/T[k];if(g>0&&(!b||g>b.g))b={k,g,r}}
         if(!b)break;left-=F[b.k]+1;F[b.k]++;c0=b.r;put.push(`${SKD[b.k][3]} ${F[b.k]-1} → ${F[b.k]}`)}
       plFree.textContent=!cmp?"Važi samo za tvoj nivo.":!fr?"Nemaš neraspoređenih poena.":
         put.length?`Imaš ${fr} slobodnih poena. Bez reseta stavi: ${put.join(", ")}${left?`, a ${left} ${left===1?"poen čuvaj":"poena čuvaj"} za sledeći nivo`:""}. Šteta raste na oko ${fk(c0.dmg)} dnevno. Kad uradiš reset, svi poeni idu po planu iz tabele gore.`
@@ -1054,13 +1071,13 @@ plRun.addEventListener("click",()=>{
 // po nivou (gameConfig.skills): companies +1 firma, entrepreneurship +5 bara (regen 10% na sat), production +3 PP, management +2 radnika
 const ECOD={companies:["Companies",1],entrepreneurship:["Preduzetništvo",5],production:["Eko proizvodnja",3],management:["Management",2]};
 const ecoVal=(k,l)=>({companies:2+l,entrepreneurship:30+5*l,production:10+3*l,management:4+2*l})[k];
-function ecoPlan(L,budget,lv,o,cur,cmp,L0){const E=D.econ,SK=E&&E.sk,LV=SK&&SK.lv;
+async function ecoPlan(L,budget,lv,o,cur,cmp,L0){const E=D.econ,SK=E&&E.sk,LV=SK&&SK.lv;
   if(!cmp||!LV){plEco.textContent=!cmp?"Eko skilovi se proveravaju samo za tvoj nivo.":"Nema podataka o eko skilovima, osveži stranicu.";return}
   const firms=[...(D.firms||[])].sort((a,b)=>(a.perDay||0)-(b.perDay||0)),avgF=firms.length?firms.reduce((t,f)=>t+(f.perDay||0),0)/firms.length:0;
   const W=D.firmsWorkers||0,T0=D.firmsTotal;
-  const addPts=(M,n)=>{M={...M};for(;;){let b=null,c=planEval(M,o);for(const k of SKK){const T={...M};T[k]++;if(!skOk(T,lv)||T[k]>n)continue;const r=planEval(T,o),g=(r.dmg-c.dmg)/T[k];if(g>0&&(!b||g>b.g))b={k,g}}
+  const addPts=async(M,n)=>{M={...M};for(;;){let b=null,c=planEval(M,o);for(const k of SKK){const T={...M};T[k]++;if(!skOk(T,lv)||T[k]>n)continue;await yld();const r=planEval(T,o),g=(r.dmg-c.dmg)/T[k];if(g>0&&(!b||g>b.g))b={k,g}}
     if(!b)break;M[b.k]++;n-=M[b.k]}return M};
-  const takePts=(M,n)=>{M={...M};while(n>0){let b=null,c=planEval(M,o);for(const k of SKK){if(M[k]<=0)continue;const T={...M};T[k]--;if(!skOk(T,lv))continue;const r=planEval(T,o),g=(c.dmg-r.dmg)/M[k];if(!b||g<b.g)b={k,g}}
+  const takePts=async(M,n)=>{M={...M};while(n>0){let b=null,c=planEval(M,o);for(const k of SKK){if(M[k]<=0)continue;const T={...M};T[k]--;if(!skOk(T,lv))continue;await yld();const r=planEval(T,o),g=(c.dmg-r.dmg)/M[k];if(!b||g<b.g)b={k,g}}
     if(!b)return null;n-=M[b.k];M[b.k]--}return M};
   // stanje: borbeni skilovi, eko nivoi, promena prihoda firmi i množilac ličnog rada
   let st={L:{...L},E:{...LV},dT:0,sm:1,r:cur,lost:0};const notes=[];
@@ -1068,11 +1085,11 @@ function ecoPlan(L,budget,lv,o,cur,cmp,L0){const E=D.econ,SK=E&&E.sk,LV=SK&&SK.l
   // pohlepno: prihvati promenu eko skila za jedan nivo ako diže štetu bar 2% i saldo ostaje u plusu
   for(let step=0;step<3;step++){let best=null;
     for(const k of Object.keys(ECOD)){const l=st.E[k]||0,v=ecoVal(k,l);
-      if(l>0){const x={...st,E:{...st.E,[k]:l-1},L:addPts(st.L,l)};let w="";
+      if(l>0){const x={...st,E:{...st.E,[k]:l-1},L:await addPts(st.L,l)};let w="";
         if(k==="companies"){const lim=ecoVal(k,l-1),f=firms[st.lost];if(f&&firms.length-st.lost>lim){x.dT-=f.perDay||0;x.lost++;w=`gubiš firmu ${f.name}`}}
         if(k==="entrepreneurship")x.sm*=(v-5)/v;if(k==="production")x.sm*=(v-3)/v;if(k==="management")x.dT-=W*2/Math.max(1,v);
         x.r=sim(x);if(x.r.net>=0&&x.r.dmg>st.r.dmg*1.02&&(!best||x.r.dmg>best.r.dmg))best={...x,note:`${ECOD[k][0]} ${l} → ${l-1}${w?" ("+w+")":""}`}}
-      const M=takePts(st.L,l+1);if(M){const x={...st,E:{...st.E,[k]:l+1},L:M};
+      const M=await takePts(st.L,l+1);if(M){const x={...st,E:{...st.E,[k]:l+1},L:M};
         if(k==="companies")x.dT+=avgF;if(k==="entrepreneurship")x.sm*=(v+5)/v;if(k==="production")x.sm*=(v+3)/v;if(k==="management")x.dT+=W*2/Math.max(1,v);
         x.r=sim(x);if(x.r.net>=0&&x.r.dmg>st.r.dmg*1.02&&(!best||x.r.dmg>best.r.dmg))best={...x,note:`${ECOD[k][0]} ${l} → ${l+1}${k==="companies"?" (otvori još jednu firmu, 50 concrete-a)":k==="management"?" (zaposli još 2 radnika)":""}`}}}
     if(!best)break;notes.push(best.note);delete best.note;st=best}
@@ -1095,7 +1112,9 @@ function jobInc(){const E=D.econ,SK=E&&E.sk;if(!SK)return 0;return (SK.enR||0)*2
 function radInc(){return selfInc()+jobInc()}
 function selfInc(){const E=D.econ,SK=E&&E.sk;if(!SK||!D.firms||!D.firms.length)return 0;
   const best=Math.max(0,...D.firms.map(f=>(1+(f.bonus||0)/100)*ecVpp(E,f.item)));return SELFM*(SK.entR||0)*24/10*(SK.prod||0)*best}
-function ecVpp(E,it){const x=E.items[it];if(!x)return 0;const P=E.prices;return((P[it]||0)-Object.entries(x.needs).reduce((t,[i,q])=>t+(P[i]||0)*q,0))/x.pp}
+// iste cene kao „Firme uživo“: proizvod po najboljoj kupovnoj ponudi, sirovina po najjeftinijoj prodajnoj (kad imamo knjigu naloga)
+const ecSell=(E,i)=>{const b=(E.book||{})[i];return b&&b.bid!=null?b.bid:(E.prices[i]||0)},ecBuy=(E,i)=>{const b=(E.book||{})[i];return b&&b.ask!=null?b.ask:(E.prices[i]||0)};
+function ecVpp(E,it){const x=E.items[it];if(!x)return 0;return(ecSell(E,it)-Object.entries(x.needs).reduce((t,[i,q])=>t+ecBuy(E,i)*q,0))/x.pp}
 // bonus u državi bez depozita: specijalitet (ako nije Fanatic Agrarian) i +30 za Fanatic Industrialist
 function ecBonus(c,it,E){const spec=c.spec===it&&c.ind!==-2;let b=spec?c.pct:0;if(c.ind===2&&(E.items[it]?.ammo||(spec&&CONSTR_.has(it))))b+=30;return b}
 const ITN={lightAmmo:"Light ammo",ammo:"Ammo",heavyAmmo:"Heavy ammo",steel:"Steel",concrete:"Concrete",limestone:"Limestone",bread:"Bread",grain:"Grain",livestock:"Livestock",lead:"Lead",petroleum:"Petroleum",oil:"Oil",cocain:"Pill",coca:"Mysterious plant",wood:"Wood",paper:"Paper"},itName=it=>ITEM[it]||ITN[it]||it;
@@ -1133,7 +1152,7 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
     const buy=needs.every(([i])=>(P[i]||0)/((E.items[i]||{}).pp||1)<=(1+r.b/100)*ecVpp(E,it));
     if(needs.length)steps.push(`Sirovinu ${buy?"<b>kupuj gotovu na marketu</b>, ne pravi je sam":"možeš i sam da praviš, ali je kupovina jednostavnija"}: ${needs.map(([i,q])=>`${fmt(units*q,0)} ${itName(i)} dnevno po firmi (oko ${fmt(units*q*(P[i]||0),1)} coina)`).join(", ")}. Firma ne proizvodi ništa ako u njoj nema sirovine.${buy?" PP koje bi potrošio na sirovinu vrede više kad ih firma potroši na ovaj proizvod.":""}`);
     else steps.push(`${itName(it)} ne traži sirovinu, firma pravi iz samih PP.`);
-    steps.push(`Kad se skupe PP, klikni <b>Produce</b>. Dobijaš oko ${fmt(units,0)} ${itName(it)} dnevno po firmi. Prodaj na marketu po oko ${fmt(P[it]||0,3)} coina, to je oko ${fmt(units*(P[it]||0),1)} coina dnevno${needs.length?" pre troška sirovine":""}.`);
+    steps.push(`Kad se skupe PP, klikni <b>Produce</b>. Dobijaš oko ${fmt(units,0)} ${itName(it)} dnevno po firmi. Prodaj na marketu po oko ${fmt(ecSell(E,it),3)} coina, to je oko ${fmt(units*ecSell(E,it),1)} coina dnevno${needs.length?" pre troška sirovine":""}.`);
     if(x.ammo)steps.push(`Pravi samo municiju koju ovde predlažem. Ostale vrste imaju drugačiju cenu i sirovinu, pa ne donose isto.`);
     return`<div style="margin-top:6px"><strong>${n} ${n===1?"firma":"firme"}${moved||changed?"":(n===1?" ostaje":" ostaju")}: ${itName(it)}${r.c?` u ${r.c.n}`:""}</strong><ol style="margin:6px 0 0 18px;padding:0">${steps.map(t=>`<li style="margin:3px 0">${t}</li>`).join("")}</ol></div>`}).join("");
   const ch=recs.filter(x=>x.change).length;
@@ -1205,11 +1224,15 @@ async function pool(items,n,fn){const out=[];let i=0;await Promise.all(Array.fro
 async function book(item){try{const d=await api("tradingOrder.getTopOrders",{itemCode:item,limit:3});return{bid:d.buyOrders[0]?.price??0,ask:d.sellOrders[0]?.price??0}}catch(e){return{bid:0,ask:0}}}
 const REG={},CNAME={};
 async function region(id){return REG[id]||(REG[id]=await api("region.getById",{regionId:id}))}
+// regioni tvoje države koje drži druga država (za −50% kad biješ za nju); ceo spisak regiona vučemo samo jednom
+let OCCP=null;
+function occBy(){if(!OCCP)OCCP=api("region.getRegionsObject").then(R=>{const c=D.me&&D.me.country;return[...new Set(Object.values(R).filter(r=>r.initialCountry===c&&r.country!==c).map(r=>r.country))]}).catch(()=>{OCCP=null;return null});return OCCP}
 async function battleById(id){
   const b=await api("battle.getById",{battleId:id});let r={};
   try{r=await region(b.defender.region||b.attacker.region)}catch(e){}let ra={};if(b.attacker.region&&b.attacker.region!==b.defender.region)try{ra=await region(b.attacker.region)}catch(e){}let bch=null;if((ra.activeUpgradeLevels||{}).base)try{const u=await api("upgrade.getUpgradeByTypeAndEntity",{upgradeType:"base",regionId:b.attacker.region});bch=[u.lastUpgradeAt,u.lastDowngradeAt].filter(Boolean).sort().pop()||null}catch(e){}
+  try{const o=await occBy();if(o&&D.me)D.me.occBy=o}catch(e){}
   const sd=k=>({c:b[k].country,n:CNAME[b[k].country]||(b.type==="resistance"&&k==="attacker"?"Pobunjenici":"?"),co:b[k].countryOrders||[],mo:b[k].muOrders||[],bounty:(b[k].moneyPool||0)>0?(b[k].moneyPer1kDamages||0):0});
-  return{id:b._id,type:b.type,at:b.createdAt,active:b.isActive,region:r.name||"",bunker:(r.activeUpgradeLevels||{}).bunker||0,base:(ra.activeUpgradeLevels||{}).base||0,baseAt:bch,linked:r.isLinkedToCapital!==false,big:!!b.isBigBattle,att:sd("attacker"),def:sd("defender")}}
+  return{id:b._id,type:b.type,at:b.createdAt,active:b.isActive,region:r.name||"",bunker:(r.activeUpgradeLevels||{}).bunker||0,base:(ra.activeUpgradeLevels||{}).base||0,baseAt:bch,linked:r.isLinkedToCapital!==false,lostAtt:!!(ra.country&&ra.country!==b.attacker.country),big:!!b.isBigBattle,att:sd("attacker"),def:sd("defender")}}
 
 async function loadUser(name){
   err.textContent="";loadBtn.disabled=true;
@@ -1273,7 +1296,7 @@ async function loadUser(name){
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
-    D.econ={prices:allP,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
+    D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
       countries:countries.map(c=>({id:c._id,n:c.name,spec:c.specializedItem,pct:c.strategicResources?.bonuses?.productionPercent||0,ind:null,party:c.rulingParty})),
       sk:{entV:sk.entrepreneurship.value,entR:sk.entrepreneurship.hourlyBarRegen||0,prod:sk.production.value,comp:sk.companies.value,mgmt:sk.management.value,nFirms:comps.length,lv:{companies:sk.companies.level||0,entrepreneurship:sk.entrepreneurship.level||0,production:sk.production.level||0,management:sk.management.level||0}}};
     D.econ.sk.enR=(sk.energy||{}).hourlyBarRegen||0;
@@ -1362,7 +1385,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="cde4810e76";
+const VKV="aa58aace2d";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

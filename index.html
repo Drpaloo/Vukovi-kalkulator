@@ -840,11 +840,15 @@ function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
 function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bounty||0,ct=b[BT.side].ct||[];
-  // ugovor ima prioritet: dok je aktivan plaća samo on, a bounty se računa tek kad ugovora nema, istekao je ili je popunjen; važi poslednji dobijeni ugovor tvog MU-a
-  const last=ct.slice().sort((x,y)=>String(y.at).localeCompare(String(x.at)))[0],ctK=last?last.perK:0,ctMin=last?last.min:0;
-  bp.value=+(last?ctK:bo).toFixed(4);
-  const tC=last?`ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete, a bounty se tada ne dodaje)`:"";
-  bpHint.innerHTML=last?`Ova bitka za tvoju stranu: ${tC}. Posle toga, kad je ugovor popunjen ili istekne, računa se bounty ${bo.toFixed(3)}. Ako znaš da je ugovor već popunjen, upiši ${bo.toFixed(3)}.`:`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
+  // ugovor ima prioritet: dok je aktivan plaća samo on, a bounty se računa tek kad ugovora nema, istekao je ili je popunjen
+  // aktivan je prvi ugovor (po redu dobijanja) koji još nije popunjen; popunjenost se zna samo sa API ključem
+  const act=ct.filter(c=>!c.done).sort((x,y)=>String(x.at).localeCompare(String(y.at)))[0],known=ct.some(c=>c.paid!=null),nd=ct.filter(c=>c.done).length;
+  const ctK=act?act.perK:0,ctMin=act?act.min:0;
+  bp.value=+(act?ctK:bo).toFixed(4);
+  const left=act&&act.paid!=null?Math.max(0,act.pay-act.paid):null;
+  if(act)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins`:""}), a bounty se tada ne dodaje. Kad se ugovor popuni računa se bounty ${bo.toFixed(3)}.${known?"":` Bez API ključa ne znam da li je ugovor već popunjen, pa ako jeste, upiši ${bo.toFixed(3)}.`}`;
+  else if(ct.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(ct.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
+  else bpHint.innerHTML=`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
   try{localStorage.setItem("rb-battle",JSON.stringify({id:b.id,side:BT.side}))}catch(e){}}
 // posle osvežavanja vrati bitku koju si poslednju izabrao, ako je još aktivna
 function restoreBattle(){let x=null;try{x=JSON.parse(localStorage.getItem("rb-battle"))}catch(e){}if(!x)return;
@@ -1438,12 +1442,22 @@ econEthics=async E=>{const need=new Set(["limestone","iron","concrete","steel","
   liveTag.after(sw);sw.addEventListener("click",()=>{login.hidden=false;sw.hidden=true;uname.focus()})}
 // ugovori tvog MU-a u izabranoj bitki, jedan zahtev po bitki, pamti se dok je stranica otvorena
 loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
-  const cs=(await api("mercenaryContractAuction.getPaginatedAuctions",{battleId:b.id,status:"won",limit:50})).items||[];
+  let cs=[],cur=null;for(let k=0;k<5;k++){const inp={battleId:b.id,status:"won",limit:50};if(cur)inp.cursor=cur;const d=await api("mercenaryContractAuction.getPaginatedAuctions",inp);cs=cs.concat(d.items||[]);cur=d.nextCursor;if(!cur)break}
   b.att.ct=[];b.def.ct=[];
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0,at:c.updatedAt||c.createdAt||""}));
+  // popunjenost ugovora: ugovor plaća tačno štetu × cenu, pa zbir novca od ugovora koji su dobili članovi MU-a u ovoj bitki
+  // pokazuje koliko je budžeta potrošeno (traži API ključ); ugovori se troše redom kojim su dobijeni
+  if(KEY&&me.mu&&(b.att.ct.length||b.def.ct.length)){
+    try{const mu=await api("mu.getById",{muId:me.mu}),mem=(mu.members||[]).map(m=>typeof m==="string"?m:m.user||m._id||m.id).filter(Boolean).slice(0,100);
+      const L=await pool(mem,3,u=>api("battleLootSummary.getByBattleAndUser",{battleId:b.id,userId:u},true).catch(()=>null));
+      const paid=L.reduce((t,x)=>t+((x&&x.totalMoneyFromContract)||0),0);
+      // ako MU ima ugovore na obe strane, ne znamo kojoj strani pripada isplata
+      const both=b.att.ct.length&&b.def.ct.length;b._paid=paid;
+      if(!both)for(const k of["att","def"]){let rest=paid;b[k].ct.slice().sort((x,y)=>String(x.at).localeCompare(String(y.at))).forEach(c=>{const use=Math.min(rest,c.pay);c.paid=use;c.done=c.pay>0&&use>=c.pay-0.05;rest-=use})}
+    }catch(e){}}
   return true};
 
-const VKV="cffd2f951d";
+const VKV="216d1d4f18";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

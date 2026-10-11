@@ -1296,7 +1296,7 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
 const wealthKey=()=>"vk-wealth-"+((D.me||{}).id||"");
 function wealthLoad0(){try{return JSON.parse(localStorage.getItem(wealthKey()))||[]}catch(e){return[]}}
 // dnevni snimci iz fajla data/wealth.json (GitHub zadatak snima članove MU), spojeni sa onim što pamti ovaj pregledač
-let WSRV=null,DSRV=null;const USAGE_URL="";
+let WSRV=null,DSRV=null;const USAGE_URL="https://script.google.com/macros/s/AKfycbwsqTva4P6XZG5yZCtomD2-H35mbHHwmrJZ9IOO-xAyHc37WSCFM4q_qteXikM0bZgELA/exec";
 function wealthLoad(){const srv=(WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id]&&WSRV.players[(D.me||{}).id].h)||[],m=new Map();srv.forEach(x=>m.set(x.d,x));wealthLoad0().forEach(x=>m.set(x.d,x));return[...m.values()].sort((a,b)=>a.d<b.d?-1:1)}
 async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
   const d=new Date().toISOString().slice(0,10),L=wealthLoad0().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
@@ -1601,7 +1601,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="a9c4e7d1b5";
+const VKV="b3d8f2e6a1";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

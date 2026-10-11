@@ -259,8 +259,8 @@ tr.cur td{background:var(--brass-soft)}
       <label for="uname" style="font-weight:600">Ime u igri</label>
       <input type="text" id="uname" required autocomplete="username" placeholder="npr. Drpalo">
       <label for="ukey" style="font-weight:600">API ključ (nije obavezan)</label>
-      <input type="password" id="ukey" autocomplete="off" placeholder="Samo za radnike i cene opreme po kvalitetu">
-      <span class="hint">Ključ ostaje samo u tvom browseru i šalje se jedino na api2.warera.io. Bez ključa radi sve osim zarade od radnika i cena opreme po kvalitetu, a tvoje bitke i ugovori se čitaju samo iz imena.</span>
+      <input type="password" id="ukey" autocomplete="off" placeholder="Samo za zaradu od radnika">
+      <span class="hint">Ključ ostaje samo u tvom browseru i šalje se jedino na api2.warera.io. Bez ključa radi sve osim zarade od radnika. Bitke, ugovori i cene opreme se čitaju samo iz imena.</span>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="remember"> Zapamti me na ovom uređaju</label>
       <button id="loadBtn" type="submit" class="btn">Učitaj</button>
       <p class="err" id="err" aria-live="polite"></p>
@@ -288,7 +288,7 @@ tr.cur td{background:var(--brass-soft)}
     <div id="guideBox" class="guide" hidden>
       <h3>1. Početak</h3>
       <ul><li>Upiši svoje ime iz igre i klikni „Učitaj".</li>
-      <li>API ključ nije obavezan: bitke za 7 dana, ugovori, loot i bogatstvo rade samo na osnovu imena. Ključ treba samo za zaradu od radnika i cene opreme po kvalitetu. Ako ga upišeš, ostaje samo u tvom browseru i šalje se jedino na api2.warera.io.</li>
+      <li>API ključ nije obavezan: bitke za 7 dana, ugovori, loot i bogatstvo rade samo na osnovu imena. Ključ treba samo za zaradu od radnika. Cene opreme dolaze iz snimka koji se osvežava na 6 sati (datum piše u Opremi, ispod cena). Ako ga upišeš, ostaje samo u tvom browseru i šalje se jedino na api2.warera.io.</li>
       
       <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u browseru. „Promeni igrača" vraća na prijavu.</li>
       <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
@@ -971,7 +971,7 @@ function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
-  priceNote.textContent=(D.keyless?"Bez API ključa cene opreme su snimak od 9. oktobra. ":"")+`Market je medijana poslednjih 40 prodaja. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
+  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Market je medijana poslednjih 40 prodaja. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
   const pc=(name,code,r)=>{const mk=market(code),b=bestWay(code,r);return`<div class="pcell"><span class="pn">${name}</span><span class="pv">${fmt(mk,1)}</span><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
@@ -1487,6 +1487,8 @@ async function loadUser(name){
       week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],keyless:!KEY,
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
+    // sveže cene opreme iz dnevnog snimka (GitHub zadatak), da svaki igrač dobije aktuelne cene i bez ključa
+    try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
     wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
@@ -1593,7 +1595,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="b21db14be9";
+const VKV="c3e0a9f1d7";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

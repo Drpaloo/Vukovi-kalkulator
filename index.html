@@ -127,6 +127,14 @@ details.adv[open]{display:grid;gap:16px}
 .tile{border:1px solid currentColor;border-radius:8px;padding:6px 4px;text-align:center;display:grid;gap:1px;background:rgba(255,255,255,.03);min-width:0}
 .tile .tn{font-size:11px}.tile .tm{font-size:15px;font-weight:700;color:var(--ink,#fff);line-height:1.2}.tile .ts{font-size:10.5px;color:var(--muted);line-height:1.25}
 .tile.tx{color:var(--muted)}
+/* Pregled: kompaktne kartice */
+#ovGrid.ovg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ovc2{cursor:pointer;gap:4px}.ovc2.wide{grid-column:1/-1}
+.ovc2 h3{justify-content:flex-start}.ovc2 .arr{margin-left:auto;color:var(--muted)}
+.ovc2 .bn{font-family:var(--display);font-size:26px;font-weight:700;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums}
+.ovc2 .bl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ovc2 .bs{font-size:13px;color:var(--muted);line-height:1.4;margin-top:2px}.ovc2 .bs b{color:var(--ink,#fff)}
+.ovn3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ovc2:hover{border-color:var(--brass)}.ovc2:focus-visible{outline:2px solid var(--brass)}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -1303,15 +1311,19 @@ function prestLine(){if(!window.skPrest)return;const L=lvl50();
 function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=bestBuild(+bonus.value),W=D.week||{},P=D.plan||{},fr=D.freePts??0;
   const nr=P.lastReset?new Date(Date.parse(P.lastReset)+7*864e5):null,canR=!nr||nr<=new Date();
   const noB=(D.firms||[]).filter(f=>!f.bonus).length;
-  const card=(ic,t,body,tab,lbl)=>`<section class="ovc"><h3>${ICO_[ic]||""}${t}</h3>${body}<button type="button" class="go" data-go="${tab}">${lbl} →</button></section>`;
+  // kompaktne kartice: jedan veliki broj, oznaka i jedna linija; cela kartica vodi na odgovarajući tab
+  const card=(ic,t,big,lab,sub,tab,cls,tip)=>`<section class="ovc ovc2 ${cls||""}" data-go="${tab}" role="button" tabindex="0"${tip?` title="${tip}"`:""}><h3>${ICO_[ic]||""}${t}<span class="arr">→</span></h3><div class="bn">${big}</div><div class="bl">${lab}</div>${sub?`<div class="bs">${sub}</div>`:""}</section>`;
+  const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric"});
+  const L=lvl50();
   ovGrid.innerHTML=
-    card("danas","Build za danas",b?`<div class="big">${WNAME[+b.s.weap]}, ${SETM[+b.s.armor]} set</div><div>${AMN[b.s.ammo]}, ${FDN[b.s.food]}${b.s.pill==="yes"?", pill":""}</div><div class="row2"><span>šteta <b>${fk(b.r.dmg)}</b></span><span>saldo <b>${sg(b.r.net)}</b></span><span>bonus ${bonus.value}%</span></div>`:`<div class="warn">Sa ovim bonusom nijedan build nije u plusu.</div>`,"danas","Bitka i detalji")+
-    card("skilovi","Skilovi",`<div class="big">${fr?`${fr} slobodnih poena`:"Svi poeni raspoređeni"}</div><div>Nivo ${P.lvl??"?"}. Reset ${canR?"možeš odmah":"tek od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}.</div>`,"plan",fr?"Gde da ih staviš":"Plan za 7 dana")+
-    card("ekonomija","Firme",`<div class="row2"><span>ukupno dnevno <b>${fmt((D.firmsTotal||0)+radInc(),1)}</b></span><span>firmi <b>${(D.firms||[]).length}</b></span></div><div class="hint">motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)}${D.keyless?" (radnici traže API ključ)":""} + tvoj rad u svojoj firmi ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}</div>${noB?`<div class="warn">${noB} ${noB===1?"firma nema":"firmi nema"} bonus proizvodnje.</div>`:"<div>Sve firme imaju bonus.</div>"}`,"ekonomija","Šta da proizvode")+
-    (()=>{const L=lvl50();if(!L)return"";const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric",year:"numeric"});
-      return card("skilovi","Do 50. nivoa (prestiž)",L.done?`<div class="big">Stigao si na 50</div><div>Možeš da uzmeš prestiž.</div>`:`<div class="big">za ${L.days} ${L.days===1?"dan":"dana"}</div><div>Oko ${d(L.at)}, fali ${fmt(L.left)} XP do ${fmt(L.need)}.</div><div class="hint">Računa najviše moguće: ${fmt(L.rate)} XP dnevno (svih 10 misija i bonus u dnevnim, nedeljnim i mesečnim + dnevna nagrada 10${L.pr?`, sa bonusom za prestiž ×${fmt(L.mult,1)}`:""}).${L.avgDays?` Po tvom proseku od ${fmt(L.avg)} XP dnevno bilo bi ${fmt(L.avgDays)} dana.`:""}</div>`,"skilovi","Plan skilova")})()+
-    card("danas","Bitke, 7 dana",W.dmg?`<div class="row2"><span>šteta <b>${fk(W.dmg)}</b></span><span>bounty i ugovori <b>${fmt((W.bounty||0)+(W.contract||0),0)}</b></span><span>case-ova <b>${W.case1||0}</b></span></div>`:`<div>Nema podataka o bitkama${D.keyless?" bez API ključa":""}.</div>`,"danas","Detalji");
+    (b?`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="ovn3"><div><div class="bn">${fk(b.r.dmg)}</div><div class="bl">šteta / dan</div></div><div><div class="bn" style="color:var(--${b.r.net>=0?"good":"bad"})">${sg(b.r.net)}</div><div class="bl">saldo / dan</div></div><div><div class="bn">${bonus.value}%</div><div class="bl">bonus bitke</div></div></div><div class="bs"><b>${WNAME[+b.s.weap]} · ${SETM[+b.s.armor]} set</b> · ${AMS[b.s.ammo]} · ${FDS[b.s.food]}${b.s.pill==="yes"?" · pill":""}</div></section>`
+      :`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="warn">Sa ovim bonusom nijedan build nije u plusu.</div></section>`)+
+    card("skilovi","Skilovi",fr?fr:"✓",fr?"slobodnih poena":"svi raspoređeni",`Nivo ${P.lvl??"?"} · reset ${canR?"možeš odmah":"od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`,"skilovi")+
+    (L?card("skilovi","Prestiž",L.done?"50":L.days,L.done?"nivo, uzmi prestiž":(L.days===1?"dan do 50. nivoa":"dana do 50. nivoa"),L.done?"":`oko ${d(L.at)} · fali ${fmt(L.left)} XP${L.pr?` · ×${fmt(L.mult,1)}`:""}`,"skilovi","",`Najviše moguće ${fmt(L.rate)} XP dnevno (sve misije i bonusi + dnevna nagrada).${L.avgDays?` Po tvom proseku ${fmt(L.avgDays)} dana.`:""}`):"")+
+    card("ekonomija","Firme",fmt((D.firmsTotal||0)+radInc(),0),"coins / dan",`${(D.firms||[]).length} firmi${noB?` · <span class="warn">${noB} bez bonusa</span>`:""}${D.keyless?" · radnici traže API ključ":""}`,"ekonomija","",`Motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)} + tvoj rad ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}`)+
+    card("danas","Bitke, 7 dana",W.dmg?fk(W.dmg):"–",W.dmg?"šteta":"nema podataka",W.dmg?`bounty i ugovori ${fmt((W.bounty||0)+(W.contract||0),0)} · case-ova ${W.case1||0}`:(D.keyless?"traži API ključ":""),"danas");
 }
+document.addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest(".ovc2[data-go]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();showTab(c.dataset.go);window.scrollTo({top:0})}});
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){showTab(g.dataset.go);window.scrollTo({top:0})}});
 {const r0=render;render=function(){r0();try{ovRender()}catch(e){}}}
@@ -1539,7 +1551,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="3545b43b29";
+const VKV="2847a98e62";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

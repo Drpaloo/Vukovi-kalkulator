@@ -146,6 +146,7 @@ details.adv[open]{display:grid;gap:16px}
 /* Oprema: cene po boji */
 .pgrid{display:grid;gap:8px}.pcard{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:grid;gap:6px}
 .pcard .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}.pcard .ph span{font-size:12px;color:var(--muted)}
+.pin{width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--ink);font:inherit;font-weight:700;text-align:center;padding:3px 2px;font-variant-numeric:tabular-nums}.pin::placeholder{color:var(--muted);opacity:1}.pin.on{border-color:var(--brass);color:var(--brass)}
 .pcard .pg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .pcell{display:grid;gap:2px;justify-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px;background:rgba(255,255,255,.03)}
 .pcell .pn{font-size:11px;color:var(--muted)}.pcell .pv{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -597,7 +598,9 @@ let OVR={};try{localStorage.removeItem("vk-ovr")}catch(e){}
 function bestWay(code,r,q){return market(code,q)<=craftCost(r)?"buy":"craft"}
 function way(code,r,q){const o=OVR[code];return o==="buy"||o==="craft"?o:bestWay(code,r,q)}
 // cena prati kvalitet kad imamo prodaje sa statovima (linearno: a + b*q), inače medijana
-function market(code,q){const e=(D.equipment||{})[code]||FALLBACK.equipment[code];if(!e)return Infinity;
+// ručno upisane cene ponude sa marketa (igra ih ne daje preko API-ja); važe za svaki kvalitet tog komada
+let ASK={};try{ASK=JSON.parse(localStorage.getItem("vk-ask"))||{}}catch(e){}
+function market(code,q){if(ASK[code]>0)return ASK[code];const e=(D.equipment||{})[code]||FALLBACK.equipment[code];if(!e)return Infinity;
   if(q==null||e.a==null)return e.price;return Math.max(e.price*0.3,e.a+e.b*q)}
 function itemCost(code,r,q){return way(code,r,q)==="buy"?market(code,q):craftCost(r)}
 // trošak na 1k štete, kao u Intel builder-u: minus znači da build zarađuje
@@ -962,9 +965,9 @@ function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
-  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Market je medijana poslednjih 40 prodaja. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
+  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je medijana poslednjih 40 prodaja, a prave ponude na marketu su obično skuplje. Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
-  const pc=(name,code,r)=>{const mk=market(code),b=bestWay(code,r);return`<div class="pcell"><span class="pn">${name}</span><span class="pv">${fmt(mk,1)}</span><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
+  const pc=(name,code,r)=>{const mk=market(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=market(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}"><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
   craftPanel();casePanel();skInit();
   if(D.firms.length){
@@ -1368,6 +1371,10 @@ function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=be
     card("ekonomija","Firme",fmt((D.firmsTotal||0)+radInc(),0),"coins / dan",`${(D.firms||[]).length} firmi${noB?` · <span class="warn">${noB} bez bonusa</span>`:""}${D.keyless?" · radnici traže API ključ":""}`,"ekonomija","",`Motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)} + tvoj rad ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}`)+
     card("danas","Bitke, 7 dana",W.dmg?fk(W.dmg):"–",W.dmg?"šteta":"nema podataka",W.dmg?`bounty i ugovori ${fmt((W.bounty||0)+(W.contract||0),0)} · case-ova ${W.case1||0}`:"","danas");
 }
+document.addEventListener("change",e=>{const t=e.target;if(!t.classList||!t.classList.contains("pin"))return;
+  const v=parseFloat(String(t.value).replace(",","."));if(v>0)ASK[t.dataset.code]=v;else delete ASK[t.dataset.code];
+  try{localStorage.setItem("vk-ask",JSON.stringify(ASK))}catch(x){}
+  tables();render()});
 document.addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest(".ovc2[data-go]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();showTab(c.dataset.go);window.scrollTo({top:0})}});
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){showTab(g.dataset.go);window.scrollTo({top:0})}});
@@ -1601,7 +1608,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="b3d8f2e6a1";
+const VKV="c8e1a4f7d2";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

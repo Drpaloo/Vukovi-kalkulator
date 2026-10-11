@@ -830,10 +830,11 @@ function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
 function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bounty||0,ct=b[BT.side].ct||[];
-  const ctK=ct.reduce((a,c)=>a+c.perK*c.min,0)/Math.max(1,ct.reduce((a,c)=>a+c.min,0)),ctMin=ct.reduce((a,c)=>a+c.min,0);
-  bp.value=+(bo+(ct.length?ctK:0)).toFixed(4);
-  const tB=bo>0?`bounty ${bo.toFixed(3)}`:"bez bountyja",tC=ct.length?`ugovor tvog MU-a ${ctK.toFixed(3)} na 1k (${ct.length>1?ct.length+" ugovora, ":""}važi dok MU ne nabije ${fk(ctMin)} štete, posle toga ostaje samo bounty)`:"tvoj MU nema ugovor u ovoj bitki";
-  bpHint.textContent=`Ova bitka za tvoju stranu: ${tB}, ${tC}. Ako znaš da je ugovor već popunjen, spusti broj na ${bo.toFixed(3)}.`;
+  // ugovor ima prioritet: dok je aktivan plaća samo on, a bounty se računa tek kad ugovora nema, istekao je ili je popunjen; važi poslednji dobijeni ugovor tvog MU-a
+  const last=ct.slice().sort((x,y)=>String(y.at).localeCompare(String(x.at)))[0],ctK=last?last.perK:0,ctMin=last?last.min:0;
+  bp.value=+(last?ctK:bo).toFixed(4);
+  const tC=last?`ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete, a bounty se tada ne dodaje)`:"";
+  bpHint.innerHTML=last?`Ova bitka za tvoju stranu: ${tC}. Posle toga, kad je ugovor popunjen ili istekne, računa se bounty ${bo.toFixed(3)}. Ako znaš da je ugovor već popunjen, upiši ${bo.toFixed(3)}.`:`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
   try{localStorage.setItem("rb-battle",JSON.stringify({id:b.id,side:BT.side}))}catch(e){}}
 // posle osvežavanja vrati bitku koju si poslednju izabrao, ako je još aktivna
 function restoreBattle(){let x=null;try{x=JSON.parse(localStorage.getItem("rb-battle"))}catch(e){}if(!x)return;
@@ -1431,10 +1432,10 @@ econEthics=async E=>{const need=new Set(["limestone","iron","concrete","steel","
 loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   const cs=(await api("mercenaryContractAuction.getPaginatedAuctions",{battleId:b.id,status:"won",limit:50})).items||[];
   b.att.ct=[];b.def.ct=[];
-  cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
+  cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0,at:c.updatedAt||c.createdAt||""}));
   return true};
 
-const VKV="cab2680767";
+const VKV="c30741a47d";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

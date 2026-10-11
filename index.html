@@ -259,8 +259,8 @@ tr.cur td{background:var(--brass-soft)}
       <label for="uname" style="font-weight:600">Ime u igri</label>
       <input type="text" id="uname" required autocomplete="username" placeholder="npr. Drpalo">
       <label for="ukey" style="font-weight:600">API ključ (nije obavezan)</label>
-      <input type="password" id="ukey" autocomplete="off" placeholder="Za radnike, cene opreme i tvoje bitke">
-      <span class="hint">Ključ ostaje samo u tvom pregledaču i šalje se jedino na api2.warera.io. Bez ključa sve radi, samo sa procenama.</span>
+      <input type="password" id="ukey" autocomplete="off" placeholder="Samo za radnike i cene opreme po kvalitetu">
+      <span class="hint">Ključ ostaje samo u tvom pregledaču i šalje se jedino na api2.warera.io. Bez ključa radi sve osim zarade od radnika i cena opreme po kvalitetu, a tvoje bitke i ugovori se čitaju samo iz imena.</span>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="remember"> Zapamti me na ovom uređaju</label>
       <button id="loadBtn" type="submit" class="btn">Učitaj</button>
       <p class="err" id="err" aria-live="polite"></p>
@@ -288,8 +288,8 @@ tr.cur td{background:var(--brass-soft)}
     <div id="guideBox" class="guide" hidden>
       <h3>1. Početak</h3>
       <ul><li>Upiši svoje ime iz igre i klikni „Učitaj".</li>
-      <li>API ključ nije obavezan. Ako ga upišeš, ostaje samo u tvom pregledaču i šalje se jedino na api2.warera.io.</li>
-      <li>Ključ je potreban za: zaradu od radnika, cene opreme po kvalitetu, tvoje bitke u poslednjih 7 dana i podatak da li je ugovor već popunjen.</li>
+      <li>API ključ nije obavezan: bitke za 7 dana, ugovori, loot i bogatstvo rade samo na osnovu imena. Ključ treba samo za zaradu od radnika i cene opreme po kvalitetu. Ako ga upišeš, ostaje samo u tvom pregledaču i šalje se jedino na api2.warera.io.</li>
+      
       <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u pregledaču. „Promeni igrača" vraća na prijavu.</li>
       <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
       <h3>2. Tabovi (donja traka)</h3>
@@ -947,7 +947,7 @@ function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bou
   const ctK=act?act.perK:0,ctMin=act?act.min:0;
   bp.value=+(act?ctK:bo).toFixed(4);
   const left=act&&act.paid!=null?Math.max(0,act.pay-act.paid):null;
-  if(act)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins`:""}), a bounty se tada ne dodaje. Kad se ugovor popuni računa se bounty ${bo.toFixed(3)}.${known?"":` Bez API ključa ne znam da li je ugovor već popunjen, pa ako jeste, upiši ${bo.toFixed(3)}.`}`;
+  if(act)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins`:""}), a bounty se tada ne dodaje. Kad se ugovor popuni računa se bounty ${bo.toFixed(3)}.`;
   else if(ct.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(ct.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
   else bpHint.innerHTML=`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
   try{localStorage.setItem("rb-battle",JSON.stringify({id:b.id,side:BT.side}))}catch(e){}}
@@ -997,7 +997,7 @@ function tables(){
   weekNote.textContent=`${fmt(W.hits)} udaraca · ${fk(W.dmg)} štete · ${W.case1} case-ova + ${W.case2} elite · ugovori ${fmt(W.contract,1)} + bounty ${fmt(W.bounty,1)}`;
   tBattles.innerHTML=D.battles.length?`<tr><th>Početak</th><th class="n">Udarci</th><th class="n">Šteta</th><th class="n">Po udarcu</th><th class="n">Case</th><th class="n">Bounty</th><th class="n">Ugovor</th></tr>`+
     D.battles.map(b=>`<tr><td>${new Date(b.at).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}</td><td class="n">${b.hits}</td><td class="n">${fk(b.dmg)}</td><td class="n">${fmt(b.dmg/Math.max(1,b.hits))}</td><td class="n">${b.c1}${b.c2?"+"+b.c2:""}</td><td class="n">${b.bounty.toFixed(1)}</td><td class="n">${b.contract.toFixed(1)}</td></tr>`).join("")
-    :`<tr><td>${D.keyless?"Za tvoje bitke treba API ključ.":"Nema bitaka u poslednjih 7 dana ili se još učitavaju."}</td></tr>`;
+    :`<tr><td>Nema bitaka u poslednjih 7 dana ili se još učitavaju.</td></tr>`;
 }
 
 function setLive(){const d=new Date(D.updatedAt),me=D.me;liveTag.className="live";
@@ -1359,7 +1359,7 @@ function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=be
     card("skilovi","Skilovi",fr?fr:"✓",fr?"slobodnih poena":"svi raspoređeni",`Nivo ${P.lvl??"?"} · poništavanje ${canR?"možeš odmah":"od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`,"skilovi")+
     (L?card("skilovi","Prestiž",L.done?"50":L.days,L.done?"nivo, uzmi prestiž":(L.days===1?"dan do 50. nivoa":"dana do 50. nivoa"),L.done?"":`oko ${d(L.at)} · fali ${fmt(L.left)} XP${L.pr?` · ×${fmt(L.mult,1)}`:""}`,"skilovi","",`Najviše moguće ${fmt(L.rate)} XP dnevno (sve misije i bonusi + dnevna nagrada).${L.avgDays?` Po tvom proseku ${fmt(L.avgDays)} dana.`:""}`):"")+
     card("ekonomija","Firme",fmt((D.firmsTotal||0)+radInc(),0),"coins / dan",`${(D.firms||[]).length} firmi${noB?` · <span class="warn">${noB} bez bonusa</span>`:""}${D.keyless?" · radnici traže API ključ":""}`,"ekonomija","",`Motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)} + tvoj rad ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}`)+
-    card("danas","Bitke, 7 dana",W.dmg?fk(W.dmg):"–",W.dmg?"šteta":"nema podataka",W.dmg?`bounty i ugovori ${fmt((W.bounty||0)+(W.contract||0),0)} · case-ova ${W.case1||0}`:(D.keyless?"traži API ključ":""),"danas");
+    card("danas","Bitke, 7 dana",W.dmg?fk(W.dmg):"–",W.dmg?"šteta":"nema podataka",W.dmg?`bounty i ugovori ${fmt((W.bounty||0)+(W.contract||0),0)} · case-ova ${W.case1||0}`:"","danas");
 }
 document.addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest(".ovc2[data-go]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();showTab(c.dataset.go);window.scrollTo({top:0})}});
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
@@ -1527,7 +1527,7 @@ async function loadUser(name){
     RECK="";app.hidden=false;topBtns.hidden=false;login.hidden=true;swUser.hidden=false;
     setLive();battleList();tables();render();
     restoreBattle();
-    if(KEY)loadWeek(user._id);
+    loadWeek(user._id);
   }catch(e){err.textContent=e.message||"Nešto nije u redu sa učitavanjem.";liveTag.className="live off";liveTag.textContent="Nije učitano"}
   finally{loadBtn.disabled=false}
 }
@@ -1580,7 +1580,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0,at:c.updatedAt||c.createdAt||""}));
   // popunjenost ugovora: ugovor plaća tačno štetu × cenu, pa zbir novca od ugovora koji su dobili članovi MU-a u ovoj bitki
   // pokazuje koliko je budžeta potrošeno (traži API ključ); ugovori se troše redom kojim su dobijeni
-  if(KEY&&me.mu&&(b.att.ct.length||b.def.ct.length)){
+  if(me.mu&&(b.att.ct.length||b.def.ct.length)){
     try{const mu=await api("mu.getById",{muId:me.mu}),mem=(mu.members||[]).map(m=>typeof m==="string"?m:m.user||m._id||m.id).filter(Boolean).slice(0,100);
       const L=await pool(mem,3,u=>api("battleLootSummary.getByBattleAndUser",{battleId:b.id,userId:u},true).catch(()=>null));
       const paid=L.reduce((t,x)=>t+((x&&x.totalMoneyFromContract)||0),0);
@@ -1590,7 +1590,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="b43aaa2867";
+const VKV="a49dbcf695";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

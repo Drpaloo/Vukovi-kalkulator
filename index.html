@@ -1192,14 +1192,16 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
 // svaka misija daje xp (10 / 50 / 100), a bonus (100 / 500 / 1000) se dobija kad je gotovo 7 od 10 (gameConfig mission.reward, potvrđeno u igri)
 // dnevna nagrada (kalendar od 7 dana) daje 10 XP svaki dan, potvrđeno u igri (gameConfig još piše 50)
 const XP_MAX_DAY=(10*10+100)+(10*50+500)/7+(10*100+1000)/30+10;
-function lvl50(){const P=D.plan||{};if(!P.xp||P.prest>0)return null;const need=xpAt(50),left=Math.max(0,need-P.xp);
-  const days=Math.ceil(left/XP_MAX_DAY),at=new Date(Date.now()+days*864e5),dd=P.created?Math.max(1,(Date.now()-Date.parse(P.created))/864e5):0,avg=dd?P.xp/dd:0;
-  return{left,need,days,at,avg,avgDays:avg?Math.ceil(left/avg):null,done:left<=0}}
+function lvl50(){const P=D.plan||{},pr=P.prest||0,xp=pr>0?(P.xpCur??P.xp):P.xp;if(!(xp>0))return null;
+  // posle prestiža deo XP-a ostaje (−65.000 po prestižu), tabela do 50 je ista, a XP od misija se množi sa 1,5 + 0,1 za svaki sledeći prestiž (v0.25.2-beta)
+  const mult=pr>0?1.5+0.1*(pr-1):1,rate=XP_MAX_DAY*mult,need=xpAt(50),left=Math.max(0,need-xp);
+  const days=Math.ceil(left/rate),at=new Date(Date.now()+days*864e5),dd=P.created?Math.max(1,(Date.now()-Date.parse(P.created))/864e5):0,avg=pr>0||!dd?0:xp/dd;
+  return{left,need,days,at,avg,avgDays:avg?Math.ceil(left/avg):null,done:left<=0,pr,mult,rate}}
 // ---- Pregled: najvažnije sa svih kartica na jednom mestu ----
 function prestLine(){if(!window.skPrest)return;const L=lvl50();
-  if(!L){skPrest.innerHTML=(D.plan||{}).prest>0?"Prestiž si već uzeo.":"";return}
+  if(!L){skPrest.innerHTML="";return}
   const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric",year:"numeric"});
-  skPrest.innerHTML=L.done?"<b>Do prestiža:</b> stigao si na 50. nivo, možeš da uzmeš prestiž.":`<b>Do prestiža (50. nivo):</b> još ${fmt(L.left)} XP, oko ${L.days} ${L.days===1?"dan":"dana"} (${d(L.at)}) uz sve misije. Po tvom proseku ${L.avgDays?fmt(L.avgDays)+" dana":"nema procene"}.`}
+  skPrest.innerHTML=L.done?"<b>Do prestiža:</b> stigao si na 50. nivo, možeš da uzmeš prestiž.":`<b>Do ${L.pr?"sledećeg ":""}prestiža (50. nivo):</b> još ${fmt(L.left)} XP, oko ${L.days} ${L.days===1?"dan":"dana"} (${d(L.at)}) uz sve misije${L.pr?`, sa bonusom ×${fmt(L.mult,1)}`:""}.${L.avgDays?` Po tvom proseku ${fmt(L.avgDays)} dana.`:""}`}
 function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=bestBuild(+bonus.value),W=D.week||{},P=D.plan||{},fr=D.freePts??0;
   const nr=P.lastReset?new Date(Date.parse(P.lastReset)+7*864e5):null,canR=!nr||nr<=new Date();
   const noB=(D.firms||[]).filter(f=>!f.bonus).length;
@@ -1209,7 +1211,7 @@ function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=be
     card("skilovi","Skilovi",`<div class="big">${fr?`${fr} slobodnih poena`:"Svi poeni raspoređeni"}</div><div>Nivo ${P.lvl??"?"}. Reset ${canR?"možeš odmah":"tek od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}.</div>`,"plan",fr?"Gde da ih staviš":"Plan za 7 dana")+
     card("ekonomija","Firme",`<div class="row2"><span>ukupno dnevno <b>${fmt((D.firmsTotal||0)+radInc(),1)}</b></span><span>firmi <b>${(D.firms||[]).length}</b></span></div><div class="hint">motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)}${D.keyless?" (radnici traže API ključ)":""} + tvoj rad u svojoj firmi ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}</div>${noB?`<div class="warn">${noB} ${noB===1?"firma nema":"firmi nema"} bonus proizvodnje.</div>`:"<div>Sve firme imaju bonus.</div>"}`,"ekonomija","Šta da proizvode")+
     (()=>{const L=lvl50();if(!L)return"";const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric",year:"numeric"});
-      return card("skilovi","Do 50. nivoa (prestiž)",L.done?`<div class="big">Stigao si na 50</div><div>Možeš da uzmeš prestiž.</div>`:`<div class="big">za ${L.days} ${L.days===1?"dan":"dana"}</div><div>Oko ${d(L.at)}, fali ${fmt(L.left)} XP do ${fmt(L.need)}.</div><div class="hint">Računa najviše moguće: ${fmt(XP_MAX_DAY)} XP dnevno (svih 10 misija i bonus u dnevnim, nedeljnim i mesečnim + dnevna nagrada 10).${L.avgDays?` Po tvom proseku od ${fmt(L.avg)} XP dnevno bilo bi ${fmt(L.avgDays)} dana.`:""}</div>`,"skilovi","Plan skilova")})()+
+      return card("skilovi","Do 50. nivoa (prestiž)",L.done?`<div class="big">Stigao si na 50</div><div>Možeš da uzmeš prestiž.</div>`:`<div class="big">za ${L.days} ${L.days===1?"dan":"dana"}</div><div>Oko ${d(L.at)}, fali ${fmt(L.left)} XP do ${fmt(L.need)}.</div><div class="hint">Računa najviše moguće: ${fmt(L.rate)} XP dnevno (svih 10 misija i bonus u dnevnim, nedeljnim i mesečnim + dnevna nagrada 10${L.pr?`, sa bonusom za prestiž ×${fmt(L.mult,1)}`:""}).${L.avgDays?` Po tvom proseku od ${fmt(L.avg)} XP dnevno bilo bi ${fmt(L.avgDays)} dana.`:""}</div>`,"skilovi","Plan skilova")})()+
     card("danas","Bitke, 7 dana",W.dmg?`<div class="row2"><span>šteta <b>${fk(W.dmg)}</b></span><span>bounty i ugovori <b>${fmt((W.bounty||0)+(W.contract||0),0)}</b></span><span>case-ova <b>${W.case1||0}</b></span></div>`:`<div>Nema podataka o bitkama${D.keyless?" bez API ključa":""}.</div>`,"danas","Detalji");
 }
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
@@ -1333,7 +1335,7 @@ async function loadUser(name){
       craftMats:{scraps:PR.scraps,steel:PR.steel},equipment:{...FALLBACK.equipment},myGear,
       week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],keyless:!KEY,
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
-      plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
+      plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
       countries:countries.map(c=>({id:c._id,n:c.name,spec:c.specializedItem,pct:c.strategicResources?.bonuses?.productionPercent||0,ind:null,party:c.rulingParty})),
@@ -1424,7 +1426,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="75283e2d15";
+const VKV="f1a2f5f040";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

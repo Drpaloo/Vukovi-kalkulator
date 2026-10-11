@@ -110,6 +110,7 @@ details.adv[open]{display:grid;gap:16px}
 .checks label{display:flex;gap:8px;align-items:center;font-size:14px}
 .checks input{accent-color:var(--brass);width:18px;height:18px}
 .dbfOpt>summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;list-style:none;position:relative;padding-right:22px}.dbfOpt>summary::-webkit-details-marker{display:none}.dbfOpt>summary::after{content:"▾";position:absolute;right:2px;top:2px;color:var(--brass);transition:transform .15s}.dbfOpt:not([open])>summary::after{transform:rotate(-90deg)}.dbfOpt{border-top:1px solid var(--line);padding-top:8px}.dbfOpt .dbfN{font-weight:600}.dbfOpt .dbfS{font-size:13px;color:var(--muted)}
+.guide h3{margin:14px 0 4px;font-size:15px;color:var(--brass)}.guide ul{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;line-height:1.5}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -224,7 +225,7 @@ tr.cur td{background:var(--brass-soft)}
       <p class="err" id="err" aria-live="polite"></p>
     </form>
     <p style="margin:8px 0 0"><span class="live off" id="liveTag">Upiši ime i klikni Učitaj</span></p>
-    <div class="btnrow" id="topBtns" hidden><button id="repOpen" type="button" class="btn">Izveštaj za kolege</button><button id="codeOpen" type="button" class="btn ghost">Učitaj build od kolege</button></div>
+    <div class="btnrow" id="topBtns" hidden><button id="repOpen" type="button" class="btn">Izveštaj za kolege</button><button id="guideOpen" type="button" class="btn ghost">Uputstvo</button></div>
   </header>
 
   <div id="app" hidden>
@@ -242,6 +243,50 @@ tr.cur td{background:var(--brass-soft)}
       <input id="codeIn" type="text" placeholder="RB1-3.3.light.steak.yes.yes.3.2.light.70" autocomplete="off">
       <button id="codeLoad" type="button" class="btn">Učitaj u kalkulator</button>
       <p class="hint" id="codeMsg" style="margin:0" aria-live="polite"></p>
+    </div>
+    <div id="guideBox" class="guide" hidden>
+      <h3>1. Početak</h3>
+      <ul><li>Upiši svoje ime iz igre i klikni „Učitaj".</li>
+      <li>API ključ nije obavezan. Ako ga upišeš, ostaje samo u tvom browseru i šalje se jedino na api2.warera.io.</li>
+      <li>Ključ je potreban za: zaradu od radnika, cene opreme po kvalitetu, tvoje bitke u poslednjih 7 dana i podatak da li je ugovor već popunjen.</li>
+      <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u browseru. „Promeni igrača" vraća na prijavu.</li>
+      <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
+      <h3>2. Tabovi (donja traka)</h3>
+      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li>
+      <li><b>Danas:</b> bitka koju biješ, preporuka builda, preliv posle pill-a, „Probaj svoj build".</li>
+      <li><b>Oprema:</b> cene opreme, izrada, case-ovi, poređenje boja oružja i seta.</li>
+      <li><b>Skilovi:</b> raspored skilova, predlog najboljeg rasporeda, plan.</li>
+      <li><b>Firme:</b> šta da proizvode tvoje firme.</li></ul>
+      <h3>3. Danas: kako da izabereš bitku</h3>
+      <ul><li>Nalepi link bitke iz igre i klikni „Učitaj", ili izaberi bitku sa naredbom iz liste.</li>
+      <li>Izaberi stranu (napad ili odbrana).</li>
+      <li>Bonus bitke se računa sam iz igre: patriot, naredba države i MU, MU štab, bunker, baza, saveznik, zakleti neprijatelj i minusi.</li>
+      <li>Bonus naredbe se čita iz igre (visok prioritet 15%, nizak 5%).</li>
+      <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se zna samo sa API ključem.</li></ul>
+      <h3>4. Preporuka</h3>
+      <ul><li>Pokazuje build sa najvećom štetom koji te ostavlja u plusu, za izabranu bitku.</li>
+      <li>Glavna sesija (8h, pill na početku) i ostatak dana. Za svaki komad piše stat, kvalitet (Min, Avg, Max) i cenu, i da li da ga kupiš ili napraviš.</li>
+      <li>„Primeni preporuku u kalkulator" prebacuje build u „Probaj svoj build".</li></ul>
+      <h3>5. Preliv posle pill-a</h3>
+      <ul><li>Kad si u debuffu, igra ti daje health u tickovima svakog punog sata.</li>
+      <li>Preliv je health koji bi se inače bacio preko pune trake. Toliko je besplatno za udarce.</li>
+      <li>Kartica pokazuje koliko udaraca se isplati i saldo. Tri ponuđena seta imaju svaki svoj padajući meni sa komadima, statovima, kvalitetom i cenom.</li>
+      <li>Ako piše „Nema preliva", ne udaraj.</li>
+      <li>Hrana u debuffu uglavnom nije isplativa.</li></ul>
+      <h3>6. Probaj svoj build</h3>
+      <ul><li>Ručno biraš oružje, set, municiju, hranu, pill i drugu sesiju, a kalkulator računa prihod, trošak, saldo i štetu.</li>
+      <li>„Izveštaj za kolege" pravi tekst i sliku builda koje možeš da pošalješ kolegi.</li></ul>
+      <h3>7. Skilovi</h3>
+      <ul><li>„Napravi svoj raspored": plus i minus menjaju nivoe, a gore piše koliko fali do prestiža.</li>
+      <li>„Izračunaj najbolji raspored" traži raspored koji daje najviše štete uz bar toliko plusa dnevno koliko upišeš. Reset skilova košta 0,5 coina po poenu i zaključava skilove na 7 dana.</li></ul>
+      <h3>8. Prestiž</h3>
+      <ul><li>Uzima se na 50. nivou (86.600 XP). Posle prestiža padaš na 25. nivo, a deo XP-a ostaje (oduzima se 65.000).</li>
+      <li>XP se posle prestiža množi sa 1,5, pa 1,6, 1,7 i tako dalje.</li>
+      <li>Procena dana računa najviše moguć XP od misija: oko 420 dnevno, sa bonusom za prestiž.</li></ul>
+      <h3>9. Poruke koje treba znati</h3>
+      <ul><li>Armor radi u stepenicama: višak iznad praga stepenice ne donosi ništa, pa gledaj levi broj u tabeli stepenica.</li>
+      <li>Procene prihoda (case-ovi, bounty) zavise od tržišta u tom trenutku.</li>
+      <li>Ako se nešto zaglavi, na dnu stranice je „Resetuj kalkulator".</li></ul>
     </div>
   </section>
 
@@ -787,7 +832,7 @@ function reportLines(){
     [`Skilovi: attack ${BASE.attack}, precision ${BASE.precision}, crit ${BASE.cc}/${BASE.cd}, armor ${BASE.armor}, dodge ${BASE.dodge}, health ${BASE.health}, hunger ${BASE.hunger}, loot ${BASE.loot}, rank +${BASE.rank}%`,"m"],
     [`Kod za kalkulator: ${encode(s)}`,"c"]];
   return L}
-function openShare(mode){share.hidden=false;repBox.hidden=mode!=="rep";codeBox.hidden=mode!=="code";shareTitle.textContent=mode==="rep"?"Izveštaj za kolege":"Učitaj build od kolege";
+function openShare(mode){share.hidden=false;repBox.hidden=mode!=="rep";codeBox.hidden=mode!=="code";guideBox.hidden=mode!=="guide";shareTitle.textContent=mode==="rep"?"Izveštaj za kolege":mode==="guide"?"Uputstvo":"Učitaj build od kolege";
   repMsg.textContent="";codeMsg.textContent="";repPrev.hidden=true;
   if(mode==="rep")repText.value=reportLines().map(l=>l[0]).join("\n");
   share.scrollIntoView({behavior:"smooth",block:"start"})}
@@ -925,7 +970,7 @@ const openTry=()=>{const d=document.getElementById("weap").closest("details");if
 reset.addEventListener("click",()=>{APQ=null;setState({...getState(),...(CUR||{})});render();openTry()});
 best.addEventListener("click",()=>{findBest();openTry()});
 repOpen.addEventListener("click",()=>openShare("rep"));
-codeOpen.addEventListener("click",()=>openShare("code"));
+guideOpen.addEventListener("click",()=>openShare("guide"));
 shareClose.addEventListener("click",()=>{share.hidden=true});
 repCopy.addEventListener("click",copyText);
 repImg.addEventListener("click",saveImg);
@@ -1457,7 +1502,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="216d1d4f18";
+const VKV="fe9a4bbc89";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

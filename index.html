@@ -149,6 +149,9 @@ details.adv[open]{display:grid;gap:16px}
 .pcard .pg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .pcell{display:grid;gap:2px;justify-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px;background:rgba(255,255,255,.03)}
 .pcell .pn{font-size:11px;color:var(--muted)}.pcell .pv{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+/* Pregled: bogatstvo */
+.wl svg.wlc{width:100%;height:56px;display:block;margin:4px 0}
+.wl .wlp{display:flex;flex-wrap:wrap;gap:2px 12px}.wl .wlp b{font-variant-numeric:tabular-nums}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -290,7 +293,7 @@ tr.cur td{background:var(--brass-soft)}
       <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u browseru. „Promeni igrača" vraća na prijavu.</li>
       <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
       <h3>2. Tabovi (donja traka)</h3>
-      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li>
+      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, bogatstvo, skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li><li><b>Bogatstvo:</b> kalkulator jednom dnevno pamti tvoj net worth u ovom browseru i pokazuje stvaran rast na dan naspram predviđenog salda. Istorija počinje od prvog otvaranja, pa grafikon dobija smisao posle nekoliko dana. Ne menjaj browser da ne izgubiš istoriju.</li>
       <li><b>Danas:</b> bitka koju biješ, preporuka builda, preliv posle pill-a, „Probaj svoj build".</li>
       <li><b>Oprema:</b> cene opreme, izrada, case-ovi, poređenje boja oružja i seta.</li>
       <li><b>Skilovi:</b> raspored skilova, predlog najboljeg rasporeda, plan.</li>
@@ -1309,6 +1312,25 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
   for(const{f,r}of recs){const x=(1+r.b/100)*ecVpp(E,r.it);if(!sb||x>sb.x)sb={x,name:f.name,it:r.it}}
   ecSelf.textContent=(sb?`Sam radi u firmi ${sb.name} (${itName(sb.it)}): oko ${fmt(works,1)} rada dnevno po ${SK.prod} PP donosi oko ${fmt(pp*sb.x,1)} coina dnevno (sa sadašnjim proizvodima ${fmt(selfInc(),1)}, i to je uračunato u dnevni saldo). `:"")+
     (SK.comp!=null?`Skil Companies ti dozvoljava ${SK.comp} firmi, a aktivnih imaš ${SK.nFirms??D.firms.length}${(SK.nFirms??D.firms.length)<SK.comp?", pa možeš da otvoriš još":""}. Management ti daje mesta za ${SK.mgmt} radnika.`:"")});
+// praćenje bogatstva: jednom dnevno pamtimo net worth u browseru (igra daje samo trenutno stanje), pa se vidi stvaran rast naspram predviđenog salda
+const wealthKey=()=>"vk-wealth-"+((D.me||{}).id||"");
+function wealthLoad(){try{return JSON.parse(localStorage.getItem(wealthKey()))||[]}catch(e){return[]}}
+async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
+  const d=new Date().toISOString().slice(0,10),L=wealthLoad().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
+  try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}}
+function wealthCard(){const L=wealthLoad();if(!L.length)return"";const last=L[L.length-1],t=Date.parse(last.d)/864e5;
+  const ref=L.find(x=>t-Date.parse(x.d)/864e5<=7)||L[0],days=Math.round(t-Date.parse(ref.d)/864e5);
+  let pred=null;try{pred=calc(getState()).net}catch(e){}
+  const head=`<h3>${ICO_.ekonomija||""}Bogatstvo</h3>`;
+  if(days<1)return`<section class="ovc ovc2 wide wl">${head}<div class="bn">${fmt(last.t,0)}</div><div class="bl">net worth danas</div><div class="bs">Praćenje je počelo danas. Otvori kalkulator svakog dana i pojaviće se grafikon i poređenje sa predviđenim saldom.</div></section>`;
+  const g=(last.t-ref.t)/days,ok=pred!=null,sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
+  const W=300,H=56,vals=L.map(x=>x.t),mn=Math.min(...vals),mx=Math.max(...vals),span=(mx-mn)||1,t0=Date.parse(L[0].d),t1=Date.parse(last.d)||t0+1;
+  const pts=L.map(x=>`${((Date.parse(x.d)-t0)/((t1-t0)||1)*(W-6)+3).toFixed(1)},${(H-4-(x.t-mn)/span*(H-8)).toFixed(1)}`).join(" ");
+  const part=(k,l)=>{const v=(last[k]-ref[k])/days;return`<span>${l} <b style="color:var(--${v>=0?"good":"bad"})">${sign(v)}</b></span>`};
+  return`<section class="ovc ovc2 wide wl">${head}<div class="ovn3"><div><div class="bn">${fmt(last.t,0)}</div><div class="bl">net worth</div></div><div><div class="bn" style="color:var(--${g>=0?"good":"bad"})">${sign(g)}</div><div class="bl">stvarno / dan (${days} d)</div></div><div><div class="bn" style="color:var(--${ok&&pred>=0?"good":"bad"})">${ok?sign(pred):"–"}</div><div class="bl">kalkulator / dan</div></div></div>`+
+    `<svg class="wlc" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Net worth po danima"><polyline points="${pts}" fill="none" stroke="var(--brass)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`+
+    `<div class="bs wlp">${part("m","gotovina")}${part("c","firme")}${part("i","itemi")}${part("e","oprema")}${part("w","oružje")} <span>dnevno</span></div>`+
+    `<div class="bs">${ok?(g>=0&&pred>=0?"Stvarno i predviđeno su oba u plusu.":g<0&&pred<0?"Stvarno i predviđeno su oba u minusu.":"Stvarno i predviđeno se razilaze u znaku."):""} Bogatstvo menjaju i cene na marketu i vrednost firmi, pa nije isto što i čist dnevni profit.</div></section>`}
 // predviđanje do 50. nivoa (prestiž): najviše XP dnevno, kad se uradi svih 10 misija u svakoj grupi
 // svaka misija daje xp (10 / 50 / 100), a bonus (100 / 500 / 1000) se dobija kad je gotovo 7 od 10 (gameConfig mission.reward, potvrđeno u igri)
 // dnevna nagrada (kalendar od 7 dana) daje 10 XP svaki dan, potvrđeno u igri (gameConfig još piše 50)
@@ -1333,6 +1355,7 @@ function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=be
   ovGrid.innerHTML=
     (b?`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="ovn3"><div><div class="bn">${fk(b.r.dmg)}</div><div class="bl">šteta / dan</div></div><div><div class="bn" style="color:var(--${b.r.net>=0?"good":"bad"})">${sg(b.r.net)}</div><div class="bl">saldo / dan</div></div><div><div class="bn">${bonus.value}%</div><div class="bl">bonus bitke</div></div></div><div class="bs"><b>${WNAME[+b.s.weap]} · ${SETM[+b.s.armor]} set</b> · ${AMS[b.s.ammo]} · ${FDS[b.s.food]}${b.s.pill==="yes"?" · pill":""}</div></section>`
       :`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="warn">Sa ovim bonusom nijedan build nije u plusu.</div></section>`)+
+    wealthCard()+
     card("skilovi","Skilovi",fr?fr:"✓",fr?"slobodnih poena":"svi raspoređeni",`Nivo ${P.lvl??"?"} · reset ${canR?"možeš odmah":"od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`,"skilovi")+
     (L?card("skilovi","Prestiž",L.done?"50":L.days,L.done?"nivo, uzmi prestiž":(L.days===1?"dan do 50. nivoa":"dana do 50. nivoa"),L.done?"":`oko ${d(L.at)} · fali ${fmt(L.left)} XP${L.pr?` · ×${fmt(L.mult,1)}`:""}`,"skilovi","",`Najviše moguće ${fmt(L.rate)} XP dnevno (sve misije i bonusi + dnevna nagrada).${L.avgDays?` Po tvom proseku ${fmt(L.avgDays)} dana.`:""}`):"")+
     card("ekonomija","Firme",fmt((D.firmsTotal||0)+radInc(),0),"coins / dan",`${(D.firms||[]).length} firmi${noB?` · <span class="warn">${noB} bez bonusa</span>`:""}${D.keyless?" · radnici traže API ključ":""}`,"ekonomija","",`Motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)} + tvoj rad ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}`)+
@@ -1461,6 +1484,7 @@ async function loadUser(name){
       week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],keyless:!KEY,
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
+    wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
       countries:countries.map(c=>({id:c._id,n:c.name,spec:c.specializedItem,pct:c.strategicResources?.bonuses?.productionPercent||0,ind:null,party:c.rulingParty})),
@@ -1566,7 +1590,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="1c906c8b0b";
+const VKV="0ad8686f6c";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

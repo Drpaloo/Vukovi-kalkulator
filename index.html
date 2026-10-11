@@ -389,6 +389,14 @@ tr.cur td{background:var(--brass-soft)}
     <button id="recApply" type="button" class="btn">Primeni preporuku u kalkulator</button>
     <p class="hint" id="recNote" style="margin:0"></p>
   </section>
+  <section class="panel" id="hpf" style="display:grid;gap:8px">
+    <div class="eyebrow">Kad ti se napuni health</div>
+    <h2 id="hpTitle" style="margin:0">Računam…</h2>
+    <div id="hpBody" style="font-size:14px;line-height:1.5;color:var(--muted,#9aa7bd)"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px">Spavam / nisam u igri
+      <select id="hpSleep" style="background:transparent;color:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit"><option value="4">4 h</option><option value="6">6 h</option><option value="7">7 h</option><option value="8">8 h</option><option value="9">9 h</option><option value="10">10 h</option><option value="12">12 h</option></select></label>
+    <div id="hpSus" class="rsteps"></div>
+  </section>
   <section class="panel" id="dbf" style="display:grid;gap:8px">
     <div class="eyebrow">Pill debuff, preliv</div>
     <h2 id="dbfTitle" style="margin:0">Računam…</h2>
@@ -713,7 +721,7 @@ function render(){fixAmmo();
   statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+(r.s2?`. Druga sesija: ${fmt(r.s2.h)} udaraca po ${fmt(r.s2.Y)} = ${fk(r.s2.dmg)}`:"")+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.st.armor)} (${fmt(r.aE*100)}%) · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu. ${armTip(r.st.armor)}.`;
   gear(r);
   compare(s);
-  renderRec();renderDebuff();
+  renderRec();renderHp();renderDebuff();
   if(window.tSkM&&!document.getElementById("tab-skilovi").hidden)skManual();
 }
 const SLN={helmet:"Šlem",chest:"Grudi",pants:"Pantalone",boots:"Čizme",gloves:"Rukavice"};
@@ -819,6 +827,33 @@ function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)retu
       for(let pass=0;pass<2;pass++)for(const sl of QSL)for(const q of QSTEP){const t=ev(c.w,c.a,c.am,{...qs,[sl]:q});if(t.net>cur.net+1e-9){qs={...qs,[sl]:q};cur=t}}
       L[i]=cur}}finally{if(own)_PC=null}
   L.sort((p,q)=>q.net-p.net);return{on,T,c,M,r,ov,end,L,ticks,nextMin}}
+// kad se health napuni i koliko da potrošiš pre spavanja, da regen ne propadne; plus održiv build bez pill-a sa tvojim skilovima
+let _hpK="";
+function renderHp(){if(!window.hpBody)return;const B=(D.me||{}).bar;
+  if(!B||B.hp==null){hpTitle.textContent="Nema podataka o health-u";hpBody.textContent="Učitaj igrača da vidim koliko ti je health.";hpSus.innerHTML="";return}
+  try{hpSleep.value=localStorage.getItem("vk-sleep")||"8"}catch(e){}
+  const HR=36e5,now=Date.now(),M=B.hpMax,r=B.hpReg,c=Math.min(B.hp,M),sl=+hpSleep.value||8;
+  const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"},tm=t=>new Date(t).toLocaleTimeString("sr-Latn",{hour:"2-digit",minute:"2-digit"});
+  const nextT=(Math.floor(now/HR)+1)*HR,n=Math.max(0,Math.ceil((M-c)/r-1e-9)),fullAt=n===0?now:nextT+(n-1)*HR;
+  const ticks=Math.floor((now+sl*HR)/HR)-Math.floor(now/HR),lost=Math.max(0,c+r*ticks-M),wake=Math.min(M,c+r*ticks);
+  // održiv build: potrošiš samo ono što regen vrati (health regen + hrana), na tvojim skilovima, bez pill-a
+  const st=getState(),key=[JSON.stringify(BASE),st.bonus,getBP(),st.mine,JSON.stringify(OVR),D.updatedAt||"",D.equipAt||"",JSON.stringify(ASK)].join("|");
+  if(key!==_hpK||!window._hpB){_hpK=key;const own=!_PC;if(own)_PC=prices();let best=null,bestNet=null;
+    try{const P=prices(),meals=Math.floor(BASE.hunger*.1*24),HB=r*24,QS=hasFit()?[0,.5,1]:[(st.q1??50)/100];
+      for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;for(const food of Object.keys(FOODHP))for(const q of QS){
+        const x=sess({...st,pill:"no",food},w,a,am,1,HB,meals,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+x.dmg/1000*(st.bp??getBP())+x.scrap,out=x.weapon+x.armor+x.ammo+x.meals*P.food[food],net=inc-out,o={x,am,food,net,inc,out};
+        if(!bestNet||net>bestNet.net)bestNet=o;if(net>=0&&(!best||x.dmg>best.x.dmg))best=o}}}finally{if(own)_PC=null}
+    window._hpB=best||bestNet;window._hpOk=!!best}
+  const o=window._hpB,hpHit=o?o.x.hpHit:3;
+  let t;
+  if(c>=M-1e-9)t=`Health ti je pun (${fmt(c,1)}/${fmt(M)}), a sve što stigne sad propada.`;
+  else t=`Health ${fmt(c,1)}/${fmt(M)} će biti pun u <b>${tm(fullAt)}</b>, za <b>${hm((fullAt-now)/HR)}</b> (regen +${fmt(r,1)} svakog punog sata, ${n===1?"1 tick":n<5?n+" ticka":n+" tickova"}).`;
+  hpBody.innerHTML=t+` Ako ne pucaš ${sl} h (do ${tm(now+sl*HR)}), health bude ${fmt(wake,1)}/${fmt(M)} i <b>propada ${fmt(lost,1)} health-a</b>.`+(lost>=hpHit?` Potroši ih pre spavanja: to je ~${fmt(Math.floor(lost/hpHit))} udaraca sa ${fmt(o.x.st.armor)} armora (${fmt(hpHit,2)} health-a po udarcu).`:" Nema šta da se potroši, ništa ne propada.");
+  hpTitle.textContent=lost>=hpHit?`Potroši ${fmt(lost,1)} health-a pre spavanja`:(c>=M-1e-9?"Health je pun":`Pun za ${hm((fullAt-now)/HR)}`);
+  if(!o){hpSus.innerHTML="";return}
+  const x=o.x,tl=window._tiles?window._tiles({...x,ammo:o.am},o.food):"";
+  hpSus.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Održiv build bez pill-a</span><span class="sm">${window._hpOk?"u plusu":"najbolji, ali u minusu"}</span></div><div class="sw">~${fmt(x.h)} udaraca dnevno · ${fk(x.dmg)} štete · saldo <b style="color:var(--${o.net>=0?"good":"bad"})">${sg(o.net)}</b></div>${tl}<p class="hint" style="margin:6px 0 0">Troši samo ono što ti regen i hrana vrate za dan (${fmt(r*24)} health-a regena + ${fmt(Math.floor(BASE.hunger*.1*24))} jela), na tvojim trenutnim skilovima, pa se ništa ne gomila ni ne troši preko toga. Cene opreme su procena iz prodaja.</p></div>`}
+hpSleep.addEventListener("change",()=>{try{localStorage.setItem("vk-sleep",hpSleep.value)}catch(e){}renderHp()});
 function renderDebuff(){if(!window.dbfBody)return;const s=getState();
   const d=debuffAdvice(s);
   const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"},b=d.L[0],x=b&&b.x;
@@ -853,6 +888,7 @@ function renderRec(){
       pc("boots","boots"+(x.a+1),x.a,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.a+1),x.a,"Ruk.",f(P.gloves.v))+
       `<div class="tile tx"><span class="tn">Municija</span><span class="tm">+${AMMOM[x.ammo||"none"]??0}%</span><span class="ts">${AMS[x.ammo]||"bez"}</span></div>`+
       `<div class="tile tx"><span class="tn">${food?"Hrana":"Bez jela"}</span><span class="tm">${food?"+"+FOODHP[food]+"%":"–"}</span><span class="ts">${food?FDS[food]+" × "+x.meals:" "}</span></div></div>`};
+  window._tiles=tiles;
   const sess=(k,sub,x,am,fd)=>`<div class="sess"><div class="sh"><span class="sk">${k}</span><span class="sm">${sub}</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${tiles({...x,ammo:am},fd)}</div>`;
   recSteps.innerHTML=
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
@@ -1612,7 +1648,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="b4d6f9e2c7";
+const VKV="c5e7a0f3d8";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

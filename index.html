@@ -1187,8 +1187,9 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
   for(const{f,r}of recs){const x=(1+r.b/100)*ecVpp(E,r.it);if(!sb||x>sb.x)sb={x,name:f.name,it:r.it}}
   ecSelf.textContent=(sb?`Sam radi u firmi ${sb.name} (${itName(sb.it)}): oko ${fmt(works,1)} rada dnevno po ${SK.prod} PP donosi oko ${fmt(pp*sb.x,1)} coina dnevno (sa sadašnjim proizvodima ${fmt(selfInc(),1)}, i to je uračunato u dnevni saldo). `:"")+
     (SK.comp!=null?`Skil Companies ti dozvoljava ${SK.comp} firmi, a aktivnih imaš ${SK.nFirms??D.firms.length}${(SK.nFirms??D.firms.length)<SK.comp?", pa možeš da otvoriš još":""}. Management ti daje mesta za ${SK.mgmt} radnika.`:"")});
-// predviđanje do 50. nivoa (prestiž): najviše XP dnevno = dnevne misije 100 + nedeljna 500/7 + mesečna 1000/30 + dnevna nagrada 50 (gameConfig mission.reward i user.dailyReward)
-const XP_MAX_DAY=100+500/7+1000/30+50;
+// predviđanje do 50. nivoa (prestiž): najviše XP dnevno, kad se uradi svih 10 misija u svakoj grupi
+// svaka misija daje xp (10 / 50 / 100), a bonus (100 / 500 / 1000) se dobija kad je gotovo 7 od 10 (gameConfig mission.reward, potvrđeno u igri)
+const XP_MAX_DAY=(10*10+100)+(10*50+500)/7+(10*100+1000)/30+50;
 function lvl50(){const P=D.plan||{};if(!P.xp||P.prest>0)return null;const need=xpAt(50),left=Math.max(0,need-P.xp);
   const days=Math.ceil(left/XP_MAX_DAY),at=new Date(Date.now()+days*864e5),dd=P.created?Math.max(1,(Date.now()-Date.parse(P.created))/864e5):0,avg=dd?P.xp/dd:0;
   return{left,need,days,at,avg,avgDays:avg?Math.ceil(left/avg):null,done:left<=0}}
@@ -1202,7 +1203,7 @@ function ovRender(){if(typeof ovGrid==="undefined")return;const b=bestBuild(+bon
     card("skilovi","Skilovi",`<div class="big">${fr?`${fr} slobodnih poena`:"Svi poeni raspoređeni"}</div><div>Nivo ${P.lvl??"?"}. Reset ${canR?"možeš odmah":"tek od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}.</div>`,"plan",fr?"Gde da ih staviš":"Plan za 7 dana")+
     card("ekonomija","Firme",`<div class="row2"><span>ukupno dnevno <b>${fmt((D.firmsTotal||0)+radInc(),1)}</b></span><span>firmi <b>${(D.firms||[]).length}</b></span></div><div class="hint">motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)}${D.keyless?" (radnici traže API ključ)":""} + tvoj rad u svojoj firmi ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}</div>${noB?`<div class="warn">${noB} ${noB===1?"firma nema":"firmi nema"} bonus proizvodnje.</div>`:"<div>Sve firme imaju bonus.</div>"}`,"ekonomija","Šta da proizvode")+
     (()=>{const L=lvl50();if(!L)return"";const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric",year:"numeric"});
-      return card("skilovi","Do 50. nivoa (prestiž)",L.done?`<div class="big">Stigao si na 50</div><div>Možeš da uzmeš prestiž.</div>`:`<div class="big">za ${L.days} ${L.days===1?"dan":"dana"}</div><div>Oko ${d(L.at)}, fali ${fmt(L.left)} XP do ${fmt(L.need)}.</div><div class="hint">Računa najviše moguće: ${fmt(XP_MAX_DAY)} XP dnevno (sve dnevne, nedeljne i mesečne misije + dnevna nagrada).${L.avgDays?` Po tvom proseku od ${fmt(L.avg)} XP dnevno bilo bi ${fmt(L.avgDays)} dana.`:""}</div>`,"skilovi","Plan skilova")})()+
+      return card("skilovi","Do 50. nivoa (prestiž)",L.done?`<div class="big">Stigao si na 50</div><div>Možeš da uzmeš prestiž.</div>`:`<div class="big">za ${L.days} ${L.days===1?"dan":"dana"}</div><div>Oko ${d(L.at)}, fali ${fmt(L.left)} XP do ${fmt(L.need)}.</div><div class="hint">Računa najviše moguće: ${fmt(XP_MAX_DAY)} XP dnevno (svih 10 misija i bonus u dnevnim, nedeljnim i mesečnim + dnevna nagrada 50).${L.avgDays?` Po tvom proseku od ${fmt(L.avg)} XP dnevno bilo bi ${fmt(L.avgDays)} dana.`:""}</div>`,"skilovi","Plan skilova")})()+
     card("danas","Bitke, 7 dana",W.dmg?`<div class="row2"><span>šteta <b>${fk(W.dmg)}</b></span><span>bounty i ugovori <b>${fmt((W.bounty||0)+(W.contract||0),0)}</b></span><span>case-ova <b>${W.case1||0}</b></span></div>`:`<div>Nema podataka o bitkama${D.keyless?" bez API ključa":""}.</div>`,"danas","Detalji");
 }
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
@@ -1417,7 +1418,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="c5beeae982";
+const VKV="ee132ff396";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

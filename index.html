@@ -331,7 +331,7 @@ tr.cur td{background:var(--brass-soft)}
           <label for="firmMan" style="font-size:14px">Zarada firmi dnevno (prazno = računa API)</label><input type="number" id="firmMan" min="0" step="1" inputmode="decimal">
           <label for="woodIn" style="font-size:14px">Wooden case-ovi dnevno, u coins</label><input type="number" id="woodIn" min="0" step="1" value="63" inputmode="decimal">
           <label for="poolIn" style="font-size:14px">Pool loot dnevno, u coins</label><input type="number" id="poolIn" min="0" step="1" value="76" inputmode="decimal">
-          <span class="hint">Wooden case-ovi i pool loot su procene. Upiši svoje ako znaš koliko ti padne.</span></div>
+          <span class="hint" id="poolNote">Wooden case-ovi i pool loot su procene. Upiši svoje ako znaš koliko ti padne.</span></div>
         </details>
       </fieldset>
       <div class="range">
@@ -575,6 +575,10 @@ function perK(r){const v=r.dmg>0?(r.O-r.I)/r.dmg*1000:0;return(v<=-0.0005?"−":
 // šta pada iz običnog case-a, % (warerastats.io/cases, preko warera-empress.app)
 const CASEDROP={knife:18.63,gun:9,pants1:8.69,gloves1:8.68,chest1:8.68,helmet1:8.66,boots1:8.66,gloves2:4.21,chest2:4.2,helmet2:4.2,boots2:4.2,pants2:4.2,rifle:2.13,boots3:1,helmet3:.99,chest3:.99,gloves3:.99,pants3:.99,sniper:.26,boots4:.12,pants4:.12,chest4:.12,helmet4:.12,gloves4:.12,tank:.013,helmet5:.006085,pants5:.005865,boots5:.005631,chest5:.005563,gloves5:.005343,jet:.003434,pants6:.001717,boots6:.001442,chest6:.001401,helmet6:.001401,gloves6:.001332};
 const rOf=c=>{const w=WCODE.indexOf(c);return w>=0?w:+c.slice(-1)-1};
+// vrednost predmeta dobijenog iz loota bitke: tržišna cena za njegov kvalitet, ali najmanje koliko vrede scraps-i kad se rastavi
+function lootVal(it){if(!it||!it.code)return 0;const c=it.code,r=rOf(c);if(!(r>=0&&r<6))return 0;
+  const w=WCODE.indexOf(c)>=0,sl=w?null:c.replace(/\d/g,""),rg=w?WR[r][0]:(SLOTR[sl]||[])[r],st=w?"attack":({helmet:"criticalDamages",chest:"armor",pants:"armor",boots:"dodge",gloves:"precision"})[sl];
+  const v=it.skills&&it.skills[st],q=rg&&v!=null?qOf(rg,v):undefined,m=market(c,q),d=dismantle(c);const x=Math.max(isFinite(m)?m:0,d);return isFinite(x)?x:0}
 // novi komad rastavljen daje pune scraps-e izrade (Empress, 100% izdržljivosti)
 function dismantle(c){const m=D.craftMats||FALLBACK.craftMats;return CRAFT[rOf(c)]*m.scraps.bid}
 function caseOpen(){return Object.entries(CASEDROP).reduce((t,[c,p])=>t+p/100*Math.max(market(c),dismantle(c)),0)/Object.values(CASEDROP).reduce((a,b)=>a+b,0)*100}
@@ -1465,13 +1469,18 @@ async function loadWeek(uid){
   const battles=S.map(s=>{W.hits+=s.hits;W.dmg+=s.totalDmg;W.case1+=s.case1Count||0;W.case2+=s.case2Count||0;W.bounty+=s.totalMoneyFromBounty||0;W.contract+=s.totalMoneyFromContract||0;
     return{at:s.createdAt,hits:s.hits,dmg:s.totalDmg,c1:s.case1Count||0,c2:s.case2Count||0,bounty:s.totalMoneyFromBounty||0,contract:s.totalMoneyFromContract||0}}).sort((a,b)=>a.at<b.at?1:-1);
   W.bountyPer1k=W.dmg?(W.bounty+W.contract)/W.dmg*1000:0.05;
+  // pool loot: predmeti koje si stvarno dobio u završenim bitkama ove nedelje, po tržišnoj ceni, na dan
+  W.poolPerDay=S.filter(x=>ended.has(x.battle)).reduce((t,x)=>t+(x.poolLoot||[]).reduce((u,y)=>u+lootVal(y.item),0),0)/7;
   D.week=W;D.battles=battles.slice(0,15);
+  if(W.poolPerDay>0&&!poolIn.dataset.user){poolIn.value=Math.round(W.poolPerDay);poolHint()}
   RECK="";battleList();tables();render();
 }
 login.addEventListener("submit",e=>{e.preventDefault();KEY=ukey.value.trim();
   try{if(remember.checked)localStorage.setItem("vk-login",JSON.stringify({n:uname.value.trim(),k:KEY}));else localStorage.removeItem("vk-login")}catch(x){}
   loadUser(uname.value.trim())});
 ["firmMan","woodIn","poolIn"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{RECK="";render()}));
+poolIn.addEventListener("input",()=>{poolIn.dataset.user=1;poolHint()});
+function poolHint(){const el=document.getElementById("poolNote");if(el)el.textContent=poolIn.dataset.user?"Ručno upisano.":(D.week&&D.week.poolPerDay>0?`Izračunato iz tvojih završenih bitaka u poslednjih 7 dana (${fmt(D.week.poolPerDay)} dnevno po tržišnoj ceni dobijenih predmeta).`:"Procena.")}
 try{const l=JSON.parse(localStorage.getItem("vk-login"));if(l){uname.value=l.n||"";ukey.value=l.k||"";remember.checked=true;KEY=ukey.value.trim();loadUser(uname.value.trim())}}catch(e){}
 
 // etika vladajućih stranaka: samo države čiji specijalitet može da dobije +30, keširano u browseru 24h
@@ -1502,7 +1511,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="fe9a4bbc89";
+const VKV="a14e56f170";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

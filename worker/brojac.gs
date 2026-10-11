@@ -1,9 +1,10 @@
 // Google Apps Script: upisuje ko koristi kalkulator u tvoju privatnu tabelu.
 // Kolone: Nik, Prvi put, Poslednji put, Ulazaka. Po igraču se upisuje najviše jednom na sat.
+const TABELA = "1-TGpI6GqKT9e1l4zpJQUYQ_-X7lKNOCIA84Jp-hwAZk"; // šifra tvoje tabele iz njenog linka
 const LIST = "Igrači";
 
 function sheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(TABELA);
   let sh = ss.getSheetByName(LIST);
   if (!sh) {
     sh = ss.insertSheet(LIST);

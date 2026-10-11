@@ -309,6 +309,7 @@ tr.cur td{background:var(--brass-soft)}
     <div class="eyebrow">Pill debuff, preliv</div>
     <h2 id="dbfTitle" style="margin:0">Računam…</h2>
     <div id="dbfBody" style="font-size:14px;line-height:1.5;color:var(--muted,#9aa7bd)"></div>
+    <div class="row" id="dbfSel" style="gap:8px;flex-wrap:wrap"><label style="font-size:14px">Oružje <select id="dbfW" aria-label="Oružje u debuffu"></select></label><label style="font-size:14px">Set <select id="dbfA" aria-label="Set u debuffu"></select></label></div>
     <div class="tbl-wrap"><table class="t" id="dbfTbl"></table></div>
     <div id="dbfDet" class="rsteps"></div>
   </section>
@@ -720,7 +721,7 @@ function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v),q=p=>p.mine
   return`<table class="gst"><thead><tr><th>Komad</th><th>Stat</th><th class="num">Kvalitet</th><th class="num">Cena</th></tr></thead><tbody>${tr}<tr><td colspan="3"><strong>Ceo komplet</strong> <span class="hint">(cena novog na marketu za ono što imaš)</span></td><td class="num"><strong>${fmt(sum)}</strong></td></tr></tbody></table>`+
     `<p class="hint" style="margin:4px 0 8px">Sa skilovima: attack ${f(x.st.atk)}, precision ${f(x.st.prec)}%, crit ${f(x.st.cc)}% za +${f(x.st.cd)}%, armor ${f(x.aE*100)}%, dodge ${f(x.dE*100)}%. Prosečan udarac ${f(x.Y)}.</p>`}
 // debuff od pill-a: udaraš samo koliko health-a bi se inače bacilo (regen preko pune trake), pa kad debuff istekne bar je pun
-function debuffAdvice(s){const B=(D.me||{}).bar;if(!B||B.hp==null)return null;
+function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)return null;
   const now=Date.now(),end=B.debuffEnd?Date.parse(B.debuffEnd):0,on=B.debuff&&end>now;
   // igra daje health u celim tickovima, na početku svakog punog sata (UTC), ne glatko
   const HR=36e5,T=on?(end-now)/HR:15.5,c=on?B.hp:0,M=B.hpMax,r=B.hpReg;
@@ -729,19 +730,23 @@ function debuffAdvice(s){const B=(D.me||{}).bar;if(!B||B.hp==null)return null;
   try{const P=prices(),q0=s.qs1||(s.q1??50)/100;
     const ev=(w,a,am,q)=>{const x=sess({...s,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+x.dmg/1000*(s.bp??0)+x.scrap,out=x.weapon+x.armor+x.ammo;return{w,a,am,x,net:inc-out,inc,out}};
     for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;L.push(ev(w,a,am,q0))}
-    L.sort((p,q)=>q.net-p.net);
+    L=L.filter(c=>(selW==null||selW===""||c.w===+selW)&&(selA==null||selA===""||c.a===+selA));L.sort((p,q)=>q.net-p.net);
     // kao u preporuci: ako ima cena po kvalitetu, za prvih nekoliko izbora biraj kvalitet po komadu (najviše plusa za novac)
     if(hasFit())for(let i=0;i<Math.min(3,L.length);i++){const c=L[i];let qs=Object.fromEntries(QSL.map(k=>[k,typeof q0==="object"?(q0[k]??0.5):q0])),cur=c;
       for(let pass=0;pass<2;pass++)for(const sl of QSL)for(const q of QSTEP){const t=ev(c.w,c.a,c.am,{...qs,[sl]:q});if(t.net>cur.net+1e-9){qs={...qs,[sl]:q};cur=t}}
       L[i]=cur}}finally{if(own)_PC=null}
   L.sort((p,q)=>q.net-p.net);return{on,T,c,M,r,ov,end,L,ticks,nextMin}}
-function renderDebuff(){if(!window.dbfBody)return;const s=getState(),d=debuffAdvice(s);
+function renderDebuff(){if(!window.dbfBody)return;const s=getState();
+  if(!dbfW.options.length){dbfW.innerHTML=`<option value="">Preporuka</option>`+WNAME.map((n,i)=>`<option value="${i}">${n}</option>`).join("");dbfA.innerHTML=`<option value="">Preporuka</option>`+SETM.map((n,i)=>`<option value="${i}">${n} set</option>`).join("");
+    dbfW.onchange=dbfA.onchange=renderDebuff}
+  const d=debuffAdvice(s,dbfW.value,dbfA.value);
   if(window.dbfDet)dbfDet.innerHTML="";
   if(!d){dbfTitle.textContent="Učitaj igrača";dbfBody.textContent="Savet za debuff čita tvoj health i vreme debuffa iz profila.";dbfTbl.innerHTML="";return}
   const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"},b=d.L[0],x=b&&b.x;
   dbfBody.innerHTML=(d.on?`Debuff ističe za <b>${hm(d.T)}</b>. Health sad ${fmt(d.c,1)}/${fmt(d.M)}. Health stiže u tickovima od +${fmt(d.r,1)} svakog punog sata, do kraja debuffa ${d.ticks===1?"je 1 tick":d.ticks<5&&d.ticks>1?"su "+d.ticks+" ticka":"je "+d.ticks+" tickova"} (sledeći za ${fmt(d.nextMin)} min), pa bi do kraja bilo ${fmt(d.c+d.r*d.ticks,1)}.`:`Nisi u debuffu. Primer za sledeći put: debuff traje 15,5h, health krene od 0, a regen stiže u tickovima od +${fmt(d.r,1)} svakog punog sata (oko ${d.ticks} tickova).`)+
     ` Preko pune trake se baca <b>${fmt(d.ov,1)}</b> health-a, i toliko je besplatno za udarce.`;
-  if(!x||d.ov<x.hpHit){dbfTitle.textContent="Nema preliva, ne udaraj";dbfTbl.innerHTML="";return}
+  if(!x){dbfTitle.textContent="Nema opcije za taj izbor";dbfBody.innerHTML+=" Probaj drugo oružje ili set (nož ide bez municije, ostalo oružje traži municiju).";dbfTbl.innerHTML="";return}
+  if(d.ov<x.hpHit){dbfTitle.textContent="Nema preliva, ne udaraj";dbfTbl.innerHTML="";return}
   const nowHits=Math.min(d.ov,Math.max(0,d.c))/x.hpHit,wait=d.ov>d.c+1e-9;
   dbfTitle.textContent=b.net>0?`Isplati se: ~${fmt(x.h)} udaraca, ${sg(b.net)} coins`:`Ne isplati se: ${sg(b.net)} coins`;
   dbfBody.innerHTML+=` Sa ${fmt(x.st.armor)} armora jedan udarac košta ${fmt(x.hpHit,2)} health-a, pa je to ~${fmt(x.h)} ${Math.round(x.h)===1?"udarac":"udaraca"} po ${fmt(x.Y)}.`+(d.on&&wait?` Sad možeš ${fmt(nowHits)} udaraca, ostalo kako health stiže.`:"")+(b.net>0?"":" Pill debuff smanjuje štetu na 40%, pa često ne pokrije trošak opreme.");
@@ -1444,7 +1449,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0,at:c.updatedAt||c.createdAt||""}));
   return true};
 
-const VKV="c5c0528fcb";
+const VKV="d8efa3c7e9";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

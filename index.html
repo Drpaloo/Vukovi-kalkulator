@@ -812,7 +812,7 @@ function fort(k,name,lvl,sd){const b=BT.b,f=b?fortShare(b[sd].c):1,n=b?b[sd].n:"
 function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // naredbe daju 15% (gameConfig još piše 10, ali igra daje 15 i u običnoj bitki: Pest 10. 10.)
   // bonus naredbe zavisi od nivoa prioriteta (v0.25.3-beta): #1 obično 15%, a u Western Cameroon je #2 davala samo 5%; API to ne vraća, pa se bira ručno
-  const oc=(b&&b._ord&&b._ord.co)||15,om=(b&&b._ord&&b._ord.mo)||15;
+  const ob=b&&b._ordBy&&b._ordBy[BT.side]||{},oc=(b&&b._ord&&b._ord.co)||ob.co||15,om=(b&&b._ord&&b._ord.mo)||ob.mo||15;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",oc],["mo","Naredba tvog MU",om],["hq",`MU štab nivo ${hq}`,hq*5],
     fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${me.alliance.name} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
     // gameConfig battle: occupyingYourRegionsMalusPercent −50, lostAttackingRegionMalusPercent −25 (oba se vide u tooltipu bonusa u igri)
@@ -844,7 +844,14 @@ function bName(b){return`${b.att.n} protiv ${b.def.n}${b.region?" · "+b.region:
 function sideSeg(){const b=BT.b;side.innerHTML=b?["att","def"].map(k=>`<input type="radio" name="side" id="side-${k}" value="${k}" ${BT.side===k?"checked":""}><label for="side-${k}">${k==="att"?"Napad":"Odbrana"}: ${b[k].n}</label>`).join(""):""}
 // Vukovi kalkulator ovo menja da ugovore povuče uživo; ovde dolaze iz data.json
 let loadContracts=async b=>{};
-function pickBattle(b,msg){BT.b=b;loadContracts(b).then(ch=>{if(ch&&BT.b===b){setBountyFromBattle();render()}}).catch(()=>{});const me=D.me||{};
+// bonus naredbe iz igre: battleOrder.getByBattle vraća priority (high/medium/low) naredbe tvoje države i MU-a
+const PRI={high:15,medium:10,low:5};
+async function loadOrders(b){if(b._ordBy)return false;const me=D.me||{};b._ordBy={att:{},def:{}};
+  for(const[k,sd]of[["att","attacker"],["def","defender"]]){const L=await api("battleOrder.getByBattle",{battleId:b.id,side:sd},true).catch(()=>[]);
+    (Array.isArray(L)?L:[]).filter(o=>o.isActive!==false).forEach(o=>{const v=PRI[o.priority];if(v==null)return;
+      if(o.country&&o.country===me.country)b._ordBy[k].co=v;if(o.mu&&o.mu===me.mu)b._ordBy[k].mo=v})}
+  return true}
+function pickBattle(b,msg){BT.b=b;loadOrders(b).then(ok=>{if(ok&&BT.b===b){autoChecks();applyChecks();RECK="";render()}}).catch(()=>{});loadContracts(b).then(ch=>{if(ch&&BT.b===b){setBountyFromBattle();render()}}).catch(()=>{});const me=D.me||{};
   BT.side=["att","def"].find(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu))||["att","def"].find(k=>b[k].c===me.country||(me.allies||[]).includes(b[k].c))||"att";
   sideSeg();autoChecks();applyChecks();setBountyFromBattle();bInfo.textContent=msg||`${bName(b)}. Bonus je izračunat iz igre za tvoju stranu.`;bPick.value=b.id;render()}
 function battleList(){const me=D.me||{},L=(D.activeBattles||[]).filter(b=>["att","def"].some(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu)));
@@ -1429,7 +1436,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="64bb5868bd";
+const VKV="058d97d79b";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

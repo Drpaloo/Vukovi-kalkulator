@@ -476,13 +476,6 @@ tr.cur td{background:var(--brass-soft)}
     <div id="tPrice" class="pgrid"></div>
   </details>
   <details class="panel">
-    <summary>Poređenje po boji oružja i seta</summary>
-    <div class="tables">
-    <div><h3>Svaka boja oružja</h3><p class="hint" style="margin:4px 0 8px">Uz komplet, municiju i hranu koje si izabrao</p><div class="tbl-wrap"><table class="t" id="tW"></table></div></div>
-    <div><h3>Svaka boja kompleta</h3><p class="hint" style="margin:4px 0 8px">Uz oružje, municiju i hranu koje si izabrao</p><div class="tbl-wrap"><table class="t" id="tA"></table></div></div>
-    </div>
-  </details>
-  <details class="panel">
     <summary>Sve kombinacije boja</summary>
     <p class="hint" style="margin:4px 0 8px">Saldo po danu (šteta ispod), uz municiju, hranu, pill i bonus koje si izabrao. Redovi su oružje, kolone komplet. Klikni polje da ga izabereš.</p>
     <div class="tbl-wrap"><table class="t" id="tGrid"></table></div>
@@ -744,8 +737,6 @@ function gear(r){
 
 function compare(s){
   const cell=(x)=>`<td class="n" style="color:${x.net>=0?"var(--good)":"var(--bad)"}">${sg(x.net)}</td>`;
-  tW.innerHTML=`<tr><th>Oružje</th><th class="n">Šteta</th><th class="n">Saldo</th></tr>`+WNAME.map((n,i)=>{const x=calc({...s,weap:String(i)});return`<tr class="${String(i)===s.weap?"cur":""}"><td>${rn(i,n)}</td><td class="n">${fk(x.dmg)}</td>${cell(x)}</tr>`}).join("");
-  tA.innerHTML=`<tr><th>Komplet</th><th class="n">Udaraca</th><th class="n">Šteta</th><th class="n">Saldo</th></tr>`+RAR.map((n,i)=>{const x=calc({...s,armor:String(i)});return`<tr class="${String(i)===s.armor?"cur":""}"><td>${rn(i,n)}</td><td class="n">${fmt(x.h)}</td><td class="n">${fk(x.dmg)}</td>${cell(x)}</tr>`}).join("");
   tGrid.innerHTML=`<tr><th>Oružje \\ komplet</th>${RAR.map((n,i)=>`<th class="n">${rn(i,n)}</th>`).join("")}</tr>`+
     WNAME.map((n,w)=>`<tr><td>${rn(w,n)}</td>`+RAR.map((_,a)=>{const x=calc({...s,weap:String(w),armor:String(a)});const cur=String(w)===s.weap&&String(a)===s.armor;
       return`<td class="n" data-w="${w}" data-a="${a}" style="cursor:pointer;background:${cur?"var(--brass-soft)":x.net>=0?"rgba(80,200,120,.10)":"rgba(230,80,80,.10)"};color:${x.net>=0?"var(--good)":"var(--bad)"}">${sg(x.net)}<br><span class="hint">${fk(x.dmg)}</span></td>`}).join("")+`</tr>`).join("");
@@ -1590,7 +1581,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="a49dbcf695";
+const VKV="af0c9997d3";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

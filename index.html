@@ -130,9 +130,9 @@ details.adv[open]{display:grid;gap:16px}
 /* Pregled: kompaktne kartice */
 #ovGrid.ovg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ovc2{cursor:pointer;gap:4px}.ovc.wide{grid-column:1/-1}
 .ovc2 h3{justify-content:flex-start}.ovc2 .arr{margin-left:auto;color:var(--muted)}
-.ovc2 .bn{font-family:var(--display);font-size:26px;font-weight:700;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums}
-.ovc2 .bl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.ovc2 .bs{font-size:13px;color:var(--muted);line-height:1.4;margin-top:2px}.ovc2 .bs b{color:var(--ink,#fff)}
+.ovc .bn{font-family:var(--display);font-size:26px;font-weight:700;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums}
+.ovc .bl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ovc .bs{font-size:13px;color:var(--muted);line-height:1.4;margin-top:2px}.ovc .bs b{color:var(--ink,#fff)}
 .ovn3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ovc2:hover{border-color:var(--brass)}.ovc2:focus-visible{outline:2px solid var(--brass)}
 /* Skilovi: trakice nivoa */
@@ -150,6 +150,7 @@ details.adv[open]{display:grid;gap:16px}
 .pcell{display:grid;gap:2px;justify-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px;background:rgba(255,255,255,.03)}
 .pcell .pn{font-size:11px;color:var(--muted)}.pcell .pv{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 /* Pregled: bogatstvo */
+.dg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0 2px}.dg div{border-radius:6px;padding:7px 0 5px;text-align:center;font-family:var(--mono);font-size:12px;font-weight:700;border:1px solid var(--line);font-variant-numeric:tabular-nums}.dg small{display:block;margin-top:3px;font-size:10px;font-weight:400;color:var(--muted);text-transform:uppercase}.dg .td{outline:2px solid var(--brass);outline-offset:-2px}
 .wl svg.wlc{width:100%;height:56px;display:block;margin:4px 0}
 .wl .wlp{display:flex;flex-wrap:wrap;gap:2px 12px}.wl .wlp b{font-variant-numeric:tabular-nums}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
@@ -1295,12 +1296,13 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
 const wealthKey=()=>"vk-wealth-"+((D.me||{}).id||"");
 function wealthLoad0(){try{return JSON.parse(localStorage.getItem(wealthKey()))||[]}catch(e){return[]}}
 // dnevni snimci iz fajla data/wealth.json (GitHub zadatak snima članove MU), spojeni sa onim što pamti ovaj pregledač
-let WSRV=null;
+let WSRV=null,DSRV=null;
 function wealthLoad(){const srv=(WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id]&&WSRV.players[(D.me||{}).id].h)||[],m=new Map();srv.forEach(x=>m.set(x.d,x));wealthLoad0().forEach(x=>m.set(x.d,x));return[...m.values()].sort((a,b)=>a.d<b.d?-1:1)}
 async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
   const d=new Date().toISOString().slice(0,10),L=wealthLoad0().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
   try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}
-  try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}}
+  try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}
+  try{const r=await fetch("data/damage.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)DSRV=await r.json()}catch(e){}}
 function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"";
   const sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
   const rows=Object.entries(WSRV.players).map(([id,p])=>{const h=p.h||[];if(!h.length)return null;const last=h[h.length-1],t=Date.parse(last.d)/864e5;
@@ -1309,6 +1311,20 @@ function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"
   const tr=rows.map((r,i)=>`<tr${r.me?' class="cur"':""}><td>${i+1}</td><td>${r.n}</td><td class="n">${fmt(r.t,0)}</td><td class="n" style="color:var(--${r.g==null?"muted":r.g>=0?"good":"bad"})">${r.g==null?"–":sign(r.g)}</td></tr>`).join("");
   return`<section class="ovc wide"><h3>${ICO_.ekonomija||""}Bogatstvo MU ${D.me.muName||""}</h3><div class="ovn3"><div><div class="bn">${fmt(tot,0)}</div><div class="bl">ukupno, ${rows.length} članova</div></div><div><div class="bn" style="color:var(--${tg>=0?"good":"bad"})">${sign(tg)}</div><div class="bl">rast / dan (7 d)</div></div><div><div class="bn">${fmt(tot/rows.length,0)}</div><div class="bl">prosek po članu</div></div></div>`+
     `<details class="det"><summary>Svi članovi</summary><div class="tbl-wrap"><table class="t"><tr><th>#</th><th>Igrač</th><th class="n">Ukupna vrednost</th><th class="n">Rast / dan</th></tr>${tr}</table></div><p class="hint" style="margin:6px 0 0">Podaci se snimaju jednom dnevno. Rast je prosek za poslednjih 7 dana. Menja ga i cena na marketu i vrednost firmi.</p></details></section>`}
+// šteta i bounty cele jedinice po danima (data/damage.json), nedelja ide od ponedeljka do nedelje po UTC
+function muDamageCard(){if(!DSRV||!DSRV.players||(D.me||{}).mu!==DSRV.mu)return"";
+  const dm={},bt={};Object.values(DSRV.players).forEach(p=>{Object.entries(p.d||{}).forEach(([k,v])=>dm[k]=(dm[k]||0)+v);Object.entries(p.b||{}).forEach(([k,v])=>bt[k]=(bt[k]||0)+v)});
+  const ks=Object.keys(dm).sort();if(!ks.length)return"";
+  const iso=t=>new Date(t).toISOString().slice(0,10),now=new Date(),dow=(now.getUTCDay()+6)%7,mon=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()-dow);
+  const wk=[...Array(7)].map((_,i)=>iso(mon+i*864e5)),today=iso(now.getTime()),M=v=>v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,v>=1e8?1:v>=1e7?1:2)+"M":v>=1e3?fmt(v/1e3,0)+"k":fmt(v,0);
+  const wv=wk.map(d=>dm[d]||0),mx=Math.max(...wv,1),sum=a=>a.reduce((x,y)=>x+y,0),best=ks.reduce((a,k)=>dm[k]>dm[a]?k:a),bb=Object.keys(bt).sort().reduce((a,k)=>bt[k]>(bt[a]||0)?k:a,ks[0]);
+  const L30=ks.slice(-30),avg=sum(L30.map(k=>dm[k]))/L30.length,dn=["Pon","Uto","Sre","Čet","Pet","Sub","Ned"],dt=k=>new Date(k).toLocaleDateString("sr-Latn",{day:"numeric",month:"numeric"});
+  const cells=wk.map((d,i)=>`<div class="${d===today?"td":""}" style="background:color-mix(in srgb,var(--brass) ${d>today?0:Math.round(8+50*wv[i]/mx)}%,var(--panel))">${d>today?"–":M(wv[i])}<small>${d===today?"Danas":dn[i]}</small></div>`).join("");
+  const ukD=sum(Object.values(DSRV.players).map(p=>p.a||0)),ukB=sum(Object.values(DSRV.players).map(p=>p.bt||0)),wB=sum(wk.map(d=>bt[d]||0));
+  return`<section class="ovc wide"><h3>${ICO_.danas||""}Šteta MU ${D.me.muName||""}</h3><div class="ovn3"><div><div class="bn">${M(sum(wv))}</div><div class="bl">šteta ove nedelje</div></div><div><div class="bn">${M(ukD)}</div><div class="bl">šteta ukupno</div></div><div><div class="bn">${M(dm[best])}</div><div class="bl">najbolji dan, ${dt(best)}</div></div></div>`+
+    `<div class="dg">${cells}</div><p class="hint" style="margin:4px 0 8px">Prosek poslednjih ${L30.length} dana: <b>${M(avg)}</b> dnevno</p>`+
+    `<div class="ovn3"><div><div class="bn" style="color:var(--brass)">${fmt(wB,0)}</div><div class="bl">bounty ove nedelje</div></div><div><div class="bn" style="color:var(--brass)">${fmt(ukB,0)}</div><div class="bl">bounty ukupno</div></div><div><div class="bn" style="color:var(--brass)">${fmt(bt[bb]||0,0)}</div><div class="bl">najbolji dan, ${dt(bb)}</div></div></div>`+
+    `<p class="hint" style="margin:8px 0 0">Zbir svih ${Object.keys(DSRV.players).length} trenutnih članova. „Ukupno" je od početka igre, a „najbolji dan" iz poslednjih ${ks.length} dana. Osvežava se svakog sata.</p></section>`}
 function wealthCard(){const L=wealthLoad();if(!L.length)return"";const last=L[L.length-1],t=Date.parse(last.d)/864e5;
   const ref=L.find(x=>t-Date.parse(x.d)/864e5<=7)||L[0],days=Math.round(t-Date.parse(ref.d)/864e5);
   let pred=null;try{pred=calc(getState()).net}catch(e){}
@@ -1346,7 +1362,7 @@ function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=be
   ovGrid.innerHTML=
     (b?`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="ovn3"><div><div class="bn">${fk(b.r.dmg)}</div><div class="bl">šteta / dan</div></div><div><div class="bn" style="color:var(--${b.r.net>=0?"good":"bad"})">${sg(b.r.net)}</div><div class="bl">saldo / dan</div></div><div><div class="bn">${bonus.value}%</div><div class="bl">bonus bitke</div></div></div><div class="bs"><b>${WNAME[+b.s.weap]} · ${SETM[+b.s.armor]} set</b> · ${AMS[b.s.ammo]} · ${FDS[b.s.food]}${b.s.pill==="yes"?" · pill":""}</div></section>`
       :`<section class="ovc ovc2 wide" data-go="danas" role="button" tabindex="0"><h3>${ICO_.danas||""}Build za danas<span class="arr">→</span></h3><div class="warn">Sa ovim bonusom nijedan build nije u plusu.</div></section>`)+
-    wealthCard()+muWealthCard()+
+    wealthCard()+muWealthCard()+muDamageCard()+
     card("skilovi","Skilovi",fr?fr:"✓",fr?"slobodnih poena":"svi raspoređeni",`Nivo ${P.lvl??"?"} · reset ${canR?"možeš odmah":"od "+nr.toLocaleString("sr-Latn",{weekday:"short",day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}`,"skilovi")+
     (L?card("skilovi","Prestiž",L.done?"50":L.days,L.done?"nivo, uzmi prestiž":(L.days===1?"dan do 50. nivoa":"dana do 50. nivoa"),L.done?"":`oko ${d(L.at)} · fali ${fmt(L.left)} XP${L.pr?` · ×${fmt(L.mult,1)}`:""}`,"skilovi","",`Najviše moguće ${fmt(L.rate)} XP dnevno (sve misije i bonusi + dnevna nagrada).${L.avgDays?` Po tvom proseku ${fmt(L.avgDays)} dana.`:""}`):"")+
     card("ekonomija","Firme",fmt((D.firmsTotal||0)+radInc(),0),"coins / dan",`${(D.firms||[]).length} firmi${noB?` · <span class="warn">${noB} bez bonusa</span>`:""}${D.keyless?" · radnici traže API ključ":""}`,"ekonomija","",`Motori ${fmt(D.firmsEngines??D.firmsTotal??0,1)} + radnici ${fmt(D.firmsWorkers||0,1)} + tvoj rad ${fmt(selfInc(),1)} + posao kod drugog ${fmt(jobInc(),1)}`)+
@@ -1583,7 +1599,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="d4f1b2a8e6";
+const VKV="e7a2c5b9f0";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

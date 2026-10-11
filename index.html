@@ -1493,8 +1493,8 @@ async function loadUser(name){
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     // sveže cene opreme iz dnevnog snimka (GitHub zadatak), da svaki igrač dobije aktuelne cene i bez ključa
     try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
-    // brojač upotrebe: samo nik, vidi worker/brojac.js; prazna adresa znači da je isključen
-    try{if(USAGE_URL&&!/^(localhost|127\.)/.test(location.hostname)&&user.username)fetch(USAGE_URL,{method:"POST",body:JSON.stringify({n:user.username}),keepalive:true}).catch(()=>{})}catch(e){}
+    // brojač upotrebe: samo nik, vidi worker/brojac.gs; prazna adresa znači da je isključen
+    try{if(USAGE_URL&&!/^(localhost|127\.)/.test(location.hostname)&&user.username)fetch(USAGE_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({n:user.username}),keepalive:true}).catch(()=>{})}catch(e){}
     wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
@@ -1601,7 +1601,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="f1b8d3a6c2";
+const VKV="a9c4e7d1b5";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

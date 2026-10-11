@@ -135,6 +135,14 @@ details.adv[open]{display:grid;gap:16px}
 .ovc2 .bs{font-size:13px;color:var(--muted);line-height:1.4;margin-top:2px}.ovc2 .bs b{color:var(--ink,#fff)}
 .ovn3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ovc2:hover{border-color:var(--brass)}.ovc2:focus-visible{outline:2px solid var(--brass)}
+/* Skilovi: trakice nivoa */
+.skl{display:grid;gap:2px}
+.skl .sk{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+.skl .sk.cur{background:rgba(212,170,70,.07)}
+.skl .skn{display:grid;gap:1px;min-width:0}.skl .skn b{font-size:14px}.skl .skn span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.skl .bar{display:flex;gap:3px}.skl .bar i{flex:1;height:9px;border-radius:2px;background:var(--line,#8884)}
+.skl .bar i.on{background:var(--brass)}.skl .bar i.up{background:var(--good)}.skl .bar i.dn{background:transparent;outline:1px solid var(--bad);outline-offset:-1px}
+.skl .skg{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);padding:12px 4px 4px}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -476,7 +484,7 @@ tr.cur td{background:var(--brass-soft)}
     <h2>Napravi svoj raspored</h2>
     <p class="hint" id="skLeft" style="margin:0"></p>
     <p id="skPrest" style="margin:0;font-size:14px"></p>
-    <div class="tbl-wrap"><table class="t" id="tSkM"></table></div>
+    <div id="tSkM" class="skl"></div>
     <button id="skMReset" type="button" class="linkbtn">Vrati na tvoje skilove</button>
     <div class="tbl-wrap"><table class="t" id="tSkR"></table></div>
     <p class="hint" id="skMNote" style="margin:0"></p>
@@ -1145,16 +1153,20 @@ function withEco(E1,fn){const SK=D.econ&&D.econ.sk,LV=SK&&SK.lv;if(!LV||!E1)retu
 function skManual(){const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.freePts??FALLBACK.freePts??0,LV=(D.econ&&D.econ.sk&&D.econ.sk.lv)||null;
   const ecoC=E=>E?Object.keys(ECOD).reduce((t,k)=>t+skCost(E[k]||0),0):0,budget=SKK.reduce((t,k)=>t+skCost(L0[k]),0)+free+ecoC(LV);
   if(!SKM)SKM={...L0};if(!ECM&&LV)ECM={...LV};const used=SKK.reduce((t,k)=>t+skCost(SKM[k]),0)+ecoC(ECM),left=budget-used;
-  tSkM.innerHTML=`<tr><th>Skil</th><th class="n">Nivo</th><th class="n">Vrednost</th></tr>`+SKK.map(k=>`<tr${SKM[k]!==L0[k]?' class="cur"':""}><td>${SKD[k][3]}</td><td class="n"><span class="stp"><button type="button" data-k="${k}" data-d="-1" aria-label="${SKD[k][3]} manje" ${SKM[k]<=0?"disabled":""}>−</button><b>${SKM[k]}</b><button type="button" data-k="${k}" data-d="1" aria-label="${SKD[k][3]} više" ${SKM[k]>=10||skCost(SKM[k]+1)-skCost(SKM[k])>left?"disabled":""}>+</button></span></td><td class="n">${skVal(k,SKM[k])}</td></tr>`).join("")+
-    (LV?`<tr><th colspan="3">Ekonomski skilovi</th></tr>`+Object.keys(ECOD).map(k=>`<tr${ECM[k]!==LV[k]?' class="cur"':""}><td>${ECOD[k][0]}</td><td class="n"><span class="stp"><button type="button" data-e="${k}" data-d="-1" aria-label="${ECOD[k][0]} manje" ${ECM[k]<=0?"disabled":""}>−</button><b>${ECM[k]}</b><button type="button" data-e="${k}" data-d="1" aria-label="${ECOD[k][0]} više" ${ECM[k]>=10||ECM[k]+1>left?"disabled":""}>+</button></span></td><td class="n">${ecoVal(k,ECM[k])}</td></tr>`).join(""):"");
+  // skilovi kao trakice: puni segmenti su sadašnji nivo, zeleni su dodati, crveni uklonjeni
+  const bar=(l,b)=>`<span class="bar" aria-hidden="true">${Array.from({length:10},(_,n)=>{n++;return`<i class="${n<=Math.min(l,b)?"on":l>b&&n<=l?"up":l<b&&n<=b?"dn":""}"></i>`}).join("")}</span>`;
+  const row=(name,val,l,b,attr,k,aria,dis1,dis2)=>`<div class="sk${l!==b?" cur":""}"><div class="skn"><b>${name}</b><span>${val}</span></div>${bar(l,b)}<span class="stp"><button type="button" ${attr}="${k}" data-d="-1" aria-label="${aria} manje" ${dis1?"disabled":""}>−</button><b>${l}</b><button type="button" ${attr}="${k}" data-d="1" aria-label="${aria} više" ${dis2?"disabled":""}>+</button></span></div>`;
+  tSkM.innerHTML=SKK.map(k=>row(SKD[k][3],skVal(k,SKM[k]),SKM[k],L0[k],"data-k",k,SKD[k][3],SKM[k]<=0,SKM[k]>=10||skCost(SKM[k]+1)-skCost(SKM[k])>left)).join("")+
+    (LV?`<div class="skg">Ekonomski skilovi</div>`+Object.keys(ECOD).map(k=>row(ECOD[k][0],ecoVal(k,ECM[k]),ECM[k],LV[k],"data-e",k,ECOD[k][0],ECM[k]<=0,ECM[k]>=10||ECM[k]+1>left)).join(""):"");
   skLeft.textContent=`Poena ostalo: ${left} od ${budget}. Nivo n košta n poena.`;
   const B=+bonus.value,cur=bestBuild(B),neu=withEco(ECM,()=>withSk(SKM,()=>bestBuild(B))),my=withEco(ECM,()=>withSk(SKM,()=>calc(getState()))),my0=calc(getState());
-  const cell=(a,b,f)=>`<td class="n">${f(a)}</td><td class="n">${f(b)}</td>`;
-  tSkR.innerHTML=`<tr><th></th><th class="n">Sad</th><th class="n">Tvoj raspored</th></tr>`+
-    `<tr><td>Preporuka: šteta</td>${cell(cur?cur.r.dmg:0,neu?neu.r.dmg:0,fk)}</tr><tr><td>Preporuka: saldo</td>${cell(cur?cur.r.net:0,neu?neu.r.net:0,sg)}</tr>`+
-    `<tr><td>Tvoj build: šteta</td>${cell(my0.dmg,my.dmg,fk)}</tr><tr><td>Tvoj build: saldo</td>${cell(my0.net,my.net,sg)}</tr>`;
+  const dl=(a,b,pct)=>{const d=b-a;if(Math.abs(d)<1e-9)return`<td class="n">–</td>`;const c=d>0?"var(--good)":"var(--bad)";return`<td class="n" style="color:${c}">${d>0?"+":"−"}${pct?fmt(Math.abs(d/(a||1))*100,1)+"%":fmt(Math.abs(d),pct===false?1:0)}</td>`};
+  const cell=(a,b,f,pct)=>`<td class="n">${f(a)}</td><td class="n">${f(b)}</td>${dl(a,b,pct)}`;
+  tSkR.innerHTML=`<tr><th></th><th class="n">Sad</th><th class="n">Tvoj raspored</th><th class="n">Razlika</th></tr>`+
+    `<tr><td>Preporuka: šteta</td>${cell(cur?cur.r.dmg:0,neu?neu.r.dmg:0,fk,true)}</tr><tr><td>Preporuka: saldo</td>${cell(cur?cur.r.net:0,neu?neu.r.net:0,sg)}</tr>`+
+    `<tr><td>Tvoj build: šteta</td>${cell(my0.dmg,my.dmg,fk,true)}</tr><tr><td>Tvoj build: saldo</td>${cell(my0.net,my.net,sg)}</tr>`;
   const inc0=D.firmsTotal+radInc(),inc1=withEco(ECM,()=>D.firmsTotal+radInc());
-  tSkR.innerHTML+=`<tr><td>Firme i lični rad dnevno</td>${cell(inc0,inc1,v=>fmt(v,1))}</tr>`;
+  tSkR.innerHTML+=`<tr><td>Firme i lični rad dnevno</td>${cell(inc0,inc1,v=>fmt(v,1),false)}</tr>`;
   skMNote.textContent=`Bonus bitke ${B}%. „Preporuka“ je najbolji build uz plus za te skilove, „Tvoj build“ je ono što si namestio u Probaj svoj build. Eko skilovi menjaju prihod: Companies dodaje ili oduzima firmu (najslabiju gubiš prvu, nova se računa kao prosečna i treba je otvoriti), Management radnike, a Preduzetništvo i Eko proizvodnja lični rad.`}
 tSkM.addEventListener("click",e=>{const b=e.target.closest("button[data-k],button[data-e]");if(!b)return;if(b.dataset.k)SKM[b.dataset.k]+=+b.dataset.d;else ECM[b.dataset.e]+=+b.dataset.d;skManual()});
 skMReset.addEventListener("click",()=>{SKM=null;ECM=null;skManual()});
@@ -1551,7 +1563,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="2847a98e62";
+const VKV="079310b5ed";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

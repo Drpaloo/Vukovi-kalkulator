@@ -109,7 +109,7 @@ details.adv[open]{display:grid;gap:16px}
 .checks{display:grid;gap:4px}
 .checks label{display:flex;gap:8px;align-items:center;font-size:14px}
 .checks input{accent-color:var(--brass);width:18px;height:18px}
-#dbfTbl tr.dbfRow{cursor:pointer}#dbfTbl tr.dbfRow:hover td{background:rgba(212,170,70,.08)}#dbfTbl tr.dbfRow.sel td{background:rgba(212,170,70,.16);color:var(--brass)}#dbfTbl tr.dbfRow:focus-visible{outline:2px solid var(--brass)}
+.dbfOpt>summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;list-style:none;position:relative;padding-right:22px}.dbfOpt>summary::-webkit-details-marker{display:none}.dbfOpt>summary::after{content:"▾";position:absolute;right:2px;top:2px;color:var(--brass);transition:transform .15s}.dbfOpt:not([open])>summary::after{transform:rotate(-90deg)}.dbfOpt{border-top:1px solid var(--line);padding-top:8px}.dbfOpt .dbfN{font-weight:600}.dbfOpt .dbfS{font-size:13px;color:var(--muted)}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -736,7 +736,6 @@ function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)retu
       for(let pass=0;pass<2;pass++)for(const sl of QSL)for(const q of QSTEP){const t=ev(c.w,c.a,c.am,{...qs,[sl]:q});if(t.net>cur.net+1e-9){qs={...qs,[sl]:q};cur=t}}
       L[i]=cur}}finally{if(own)_PC=null}
   L.sort((p,q)=>q.net-p.net);return{on,T,c,M,r,ov,end,L,ticks,nextMin}}
-let DBFK=null;
 function renderDebuff(){if(!window.dbfBody)return;const s=getState();
   const d=debuffAdvice(s);
   const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"},b=d.L[0],x=b&&b.x;
@@ -746,14 +745,11 @@ function renderDebuff(){if(!window.dbfBody)return;const s=getState();
   const nowHits=Math.min(d.ov,Math.max(0,d.c))/x.hpHit,wait=d.ov>d.c+1e-9;
   dbfTitle.textContent=b.net>0?`Isplati se: ~${fmt(x.h)} udaraca, ${sg(b.net)} coins`:`Ne isplati se: ${sg(b.net)} coins`;
   dbfBody.innerHTML+=` Sa ${fmt(x.st.armor)} armora jedan udarac košta ${fmt(x.hpHit,2)} health-a, pa je to ~${fmt(x.h)} ${Math.round(x.h)===1?"udarac":"udaraca"} po ${fmt(x.Y)}.`+(d.on&&wait?` Sad možeš ${fmt(nowHits)} udaraca, ostalo kako health stiže.`:"")+(b.net>0?"":" Pill debuff smanjuje štetu na 40%, pa često ne pokrije trošak opreme.");
-  const top=d.L.slice(0,3),kk=o=>o.w+"-"+o.a+"-"+o.am,pick=top.find(o=>kk(o)===DBFK)||top[0];
-  dbfTbl.innerHTML=`<tr><th>Izaberi opremu u debuffu</th><th>Udaraca</th><th>Šteta</th><th>Saldo</th></tr>`+top.map(o=>`<tr class="dbfRow${o===pick?" sel":""}" data-k="${kk(o)}" tabindex="0" role="button" aria-pressed="${o===pick}"><td>${WNAME[o.w]} · ${SETM[o.a]} set · ${AMS[o.am]}</td><td>${fmt(o.x.h)}</td><td>${fk(o.x.dmg)}</td><td>${sg(o.net)}</td></tr>`).join("");
-  const x2=pick.x,b2=pick;
-  // detaljna preporuka kao u glavnoj: šta kupiti ili napraviti, pa stat, kvalitet i cena svakog komada
-  dbfDet.innerHTML=`<div class="rrow"><span class="k">Oprema</span><span>${gearWords({s1:x2})}</span></div>`+
-    `<details class="det" open><summary>Statovi i cena opreme</summary><p class="hint" style="margin:4px 0">${rn(b2.w,WNAME[b2.w])} · ${rn(b2.a,SETM[b2.a])} set · ${AMS[b2.am]}. Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj sa najviše plusa za novac.</p>${gearStats(x2)}</details>`}
-{const pickRow=e=>{const r=e.target.closest&&e.target.closest("tr.dbfRow");if(!r)return;if(e.type==="keydown"&&e.key!=="Enter"&&e.key!==" ")return;e.preventDefault();DBFK=r.dataset.k;renderDebuff()};
-  document.addEventListener("click",pickRow);document.addEventListener("keydown",pickRow)}
+  // svaka od tri opcije ima svoj padajući meni sa punim detaljima (šta kupiti ili napraviti, pa komad, stat, kvalitet i cena)
+  const top=d.L.slice(0,3);dbfTbl.innerHTML="";
+  dbfDet.innerHTML=top.map((o,i)=>`<details class="det dbfOpt"${i===0?" open":""}><summary><span class="dbfN">${WNAME[o.w]} · ${SETM[o.a]} set · ${AMS[o.am]}</span><span class="dbfS">${fmt(o.x.h)} udaraca · ${fk(o.x.dmg)} · <b style="color:var(--${o.net>=0?"good":"bad"})">${sg(o.net)}</b></span></summary>`+
+    `<div class="rrow"><span class="k">Oprema</span><span>${gearWords({s1:o.x})}</span></div>`+
+    `<p class="hint" style="margin:4px 0">${rn(o.w,WNAME[o.w])} · ${rn(o.a,SETM[o.a])} set · ${AMS[o.am]}. Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj sa najviše plusa za novac.</p>${gearStats(o.x)}</details>`).join("")}
 function renderRec(){
   const b=bestBuild(+bonus.value);
   if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
@@ -1449,7 +1445,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0,at:c.updatedAt||c.createdAt||""}));
   return true};
 
-const VKV="cfdc9a3a8d";
+const VKV="ddc68f92b4";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

@@ -595,14 +595,17 @@ function craftTiers(){const al={};((D.craft||{}).tiers||[]).forEach(t=>al[t.tier
 function codeName(c){const w=WCODE.indexOf(c),t=w>=0?WNAME[w].toLowerCase():SLN[c.replace(/\d/g,"")].toLowerCase();return`<span class="q${rOf(c)}">${t}</span>`}
 // ručni izbor kupi/napravi je uklonjen, kalkulator uvek bira jeftinije; stari sačuvani izbori se brišu
 let OVR={};try{localStorage.removeItem("vk-ovr")}catch(e){}
-function bestWay(code,r,q){return market(code,q)<=craftCost(r)?"buy":"craft"}
+function bestWay(code,r,q){return buy(code,q)<=craftCost(r)?"buy":"craft"}
 function way(code,r,q){const o=OVR[code];return o==="buy"||o==="craft"?o:bestWay(code,r,q)}
 // cena prati kvalitet kad imamo prodaje sa statovima (linearno: a + b*q), inače medijana
 // ručno upisane cene ponude sa marketa (igra ih ne daje preko API-ja); važe za svaki kvalitet tog komada
 let ASK={};try{ASK=JSON.parse(localStorage.getItem("vk-ask"))||{}}catch(e){}
 function market(code,q){if(ASK[code]>0)return ASK[code];const e=(D.equipment||{})[code]||FALLBACK.equipment[code];if(!e)return Infinity;
   if(q==null||e.a==null)return e.price;return Math.max(e.price*0.3,e.a+e.b*q)}
-function itemCost(code,r,q){return way(code,r,q)==="buy"?market(code,q):craftCost(r)}
+// kupovina ide po ponudi, a ona je obično oko 25% iznad cena po kojima se prodavalo (javni API ne daje ponude), osim ako je cena upisana ručno
+const ASKM=1.25;
+function buy(code,q){return ASK[code]>0?ASK[code]:market(code,q)*ASKM}
+function itemCost(code,r,q){return way(code,r,q)==="buy"?buy(code,q):craftCost(r)}
 // trošak na 1k štete, kao u Intel builder-u: minus znači da build zarađuje
 function perK(r){const v=r.dmg>0?(r.O-r.I)/r.dmg*1000:0;return(v<=-0.0005?"−":"")+Math.abs(v).toFixed(3)}
 // šta pada iz običnog case-a, % (warerastats.io/cases, preko warera-empress.app)
@@ -721,7 +724,7 @@ function gear(r){
     SLOTS.forEach(sl=>{const c=sl+(x.a+1);use[c]=use[c]||{n:rn(x.a,SLN[sl]),r:x.a,q:0,qq:x.st.P[sl].q};use[c].q+=x.aUse});
   });
   let sNeed=0,stNeed=0,save=0;
-  const rows=Object.entries(use).map(([code,u])=>{const mk=market(code,u.qq),c=craftCost(u.r),w=way(code,u.r,u.qq),best=bestWay(code,u.r,u.qq);
+  const rows=Object.entries(use).map(([code,u])=>{const mk=buy(code,u.qq),c=craftCost(u.r),w=way(code,u.r,u.qq),best=bestWay(code,u.r,u.qq);
     if(w==="craft"){sNeed+=u.q*CRAFT[u.r];stNeed+=u.q*2*STEEL[u.r]}
     save+=u.q*Math.abs(mk-c);
     return`<tr><td>${u.n}</td><td class="n">${fmt(u.q,2)}</td><td class="n">${fmt(mk,1)}</td><td class="n">${fmt(c,1)}</td><td><span class="chip ${w==="craft"?"b":"g"}">${w==="craft"?"Napravi":"Kupi"}</span>${w!==best?' <span class="hint">(ručno)</span>':""}</td></tr>`}).join("");
@@ -965,9 +968,9 @@ function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
-  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je medijana poslednjih 40 prodaja, a prave ponude na marketu su obično skuplje. Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
+  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je procena cene kupovine: medijana poslednjih 40 prodaja plus 25%, jer su ponude na marketu obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
-  const pc=(name,code,r)=>{const mk=market(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=market(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}"><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
+  const pc=(name,code,r)=>{const mk=buy(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=buy(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}"><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
   craftPanel();casePanel();skInit();
   if(D.firms.length){
@@ -1608,7 +1611,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="c8e1a4f7d2";
+const VKV="d9f2b5a8e3";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

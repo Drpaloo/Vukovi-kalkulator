@@ -404,6 +404,7 @@ tr.cur td{background:var(--brass-soft)}
   <section class="panel" style="display:grid;gap:10px">
     <h2>Napravi svoj raspored</h2>
     <p class="hint" id="skLeft" style="margin:0"></p>
+    <p id="skPrest" style="margin:0;font-size:14px"></p>
     <div class="tbl-wrap"><table class="t" id="tSkM"></table></div>
     <button id="skMReset" type="button" class="linkbtn">Vrati na tvoje skilove</button>
     <div class="tbl-wrap"><table class="t" id="tSkR"></table></div>
@@ -1195,7 +1196,11 @@ function lvl50(){const P=D.plan||{};if(!P.xp||P.prest>0)return null;const need=x
   const days=Math.ceil(left/XP_MAX_DAY),at=new Date(Date.now()+days*864e5),dd=P.created?Math.max(1,(Date.now()-Date.parse(P.created))/864e5):0,avg=dd?P.xp/dd:0;
   return{left,need,days,at,avg,avgDays:avg?Math.ceil(left/avg):null,done:left<=0}}
 // ---- Pregled: najvažnije sa svih kartica na jednom mestu ----
-function ovRender(){if(typeof ovGrid==="undefined")return;const b=bestBuild(+bonus.value),W=D.week||{},P=D.plan||{},fr=D.freePts??0;
+function prestLine(){if(!window.skPrest)return;const L=lvl50();
+  if(!L){skPrest.innerHTML=(D.plan||{}).prest>0?"Prestiž si već uzeo.":"";return}
+  const d=x=>x.toLocaleString("sr-Latn",{day:"numeric",month:"numeric",year:"numeric"});
+  skPrest.innerHTML=L.done?"<b>Do prestiža:</b> stigao si na 50. nivo, možeš da uzmeš prestiž.":`<b>Do prestiža (50. nivo):</b> još ${fmt(L.left)} XP, oko ${L.days} ${L.days===1?"dan":"dana"} (${d(L.at)}) uz sve misije. Po tvom proseku ${L.avgDays?fmt(L.avgDays)+" dana":"nema procene"}.`}
+function ovRender(){prestLine();if(typeof ovGrid==="undefined")return;const b=bestBuild(+bonus.value),W=D.week||{},P=D.plan||{},fr=D.freePts??0;
   const nr=P.lastReset?new Date(Date.parse(P.lastReset)+7*864e5):null,canR=!nr||nr<=new Date();
   const noB=(D.firms||[]).filter(f=>!f.bonus).length;
   const card=(ic,t,body,tab,lbl)=>`<section class="ovc"><h3>${ICO_[ic]||""}${t}</h3>${body}<button type="button" class="go" data-go="${tab}">${lbl} →</button></section>`;
@@ -1419,7 +1424,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="26276c05fe";
+const VKV="70b5a62f7a";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

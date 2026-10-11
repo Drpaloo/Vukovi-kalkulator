@@ -111,6 +111,22 @@ details.adv[open]{display:grid;gap:16px}
 .checks input{accent-color:var(--brass);width:18px;height:18px}
 .dbfOpt>summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;list-style:none;position:relative;padding-right:22px}.dbfOpt>summary::-webkit-details-marker{display:none}.dbfOpt>summary::after{content:"▾";position:absolute;right:2px;top:2px;color:var(--brass);transition:transform .15s}.dbfOpt:not([open])>summary::after{transform:rotate(-90deg)}.dbfOpt{border-top:1px solid var(--line);padding-top:8px}.dbfOpt .dbfN{font-weight:600}.dbfOpt .dbfS{font-size:13px;color:var(--muted)}
 .guide h3{margin:14px 0 4px;font-size:15px;color:var(--brass)}.guide ul{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;line-height:1.5}
+/* skica: preporuka kao kartice, prihod/trošak u dve kolone, oprema kao pločice */
+#rec .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#rec .nums .v{font-size:22px}#rec .nums .k{font-size:11px;line-height:1.25}
+.ldg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14px}
+.ldg>div{padding:10px 12px;display:grid;gap:5px;align-content:start}.ldg>div+div{border-left:1px solid var(--line)}
+.ldg h4{margin:0 0 2px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.ldg .cs h4{color:var(--bad)}.ldg .in h4{color:var(--good)}
+.ldg .ln{display:flex;justify-content:space-between;gap:8px}.ldg .cs .n{color:var(--bad)}.ldg .in .n{color:var(--good)}.ldg .n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ldg .tot{border-top:1px solid var(--line);padding-top:5px;margin-top:2px;font-weight:600}
+.sess{display:grid;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.sess .sh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.sess .sk{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sess .sw{font-weight:600;font-size:15px;line-height:1.4}.sess .sm{font-size:13px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{border:1px solid currentColor;border-radius:8px;padding:6px 4px;text-align:center;display:grid;gap:1px;background:rgba(255,255,255,.03);min-width:0}
+.tile .tn{font-size:11px}.tile .tm{font-size:15px;font-weight:700;color:var(--ink,#fff);line-height:1.2}.tile .ts{font-size:10.5px;color:var(--muted);line-height:1.25}
+.tile.tx{color:var(--muted)}
 .checks .ckrow{display:flex;gap:8px;font-size:14px}.checks .ckt{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
 .checks .n{margin-left:auto;font-family:var(--mono);color:var(--muted)}
 #battle .row{display:flex;gap:8px}
@@ -342,12 +358,13 @@ tr.cur td{background:var(--brass-soft)}
   <section class="panel hero" id="rec" aria-live="polite">
     <div class="eyebrow">Preporuka za ovu bitku</div>
     <h2 id="recTitle">Računam…</h2>
-    <div id="recSteps" class="rsteps"></div>
     <div class="nums">
       <div class="stat"><span class="k">Šteta / dan</span><span class="v" id="recDmg">0</span></div>
       <div class="stat"><span class="k">Saldo / dan</span><span class="v" id="recNet">0</span></div>
       <div class="stat"><span class="k">Trošak na 1k štete</span><span class="v" id="recK">0</span></div>
     </div>
+    <div id="recLedger" class="ldg"></div>
+    <div id="recSteps" class="rsteps"></div>
     <button id="recApply" type="button" class="btn">Primeni preporuku u kalkulator</button>
     <p class="hint" id="recNote" style="margin:0"></p>
   </section>
@@ -801,18 +818,29 @@ function renderDebuff(){if(!window.dbfBody)return;const s=getState();
     `<p class="hint" style="margin:4px 0">${rn(o.w,WNAME[o.w])} · ${rn(o.a,SETM[o.a])} set · ${AMS[o.am]}. Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj sa najviše plusa za novac.</p>${gearStats(o.x)}</details>`).join("")}
 function renderRec(){
   const b=bestBuild(+bonus.value);
-  if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
+  if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recLedger.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
     recNote.textContent="Izaberi bitku sa većim bonusom gore.";return}
   recApply.hidden=false;const s=b.s,r=b.r;
-  const qw=q=>q<=0?"najslabiji (min)":q>=100?"najjači (max)":q==50?"srednji":q+"%";
-  recTitle.innerHTML=`${rn(+s.weap,WNAME[+s.weap])} i ${rn(+s.armor,SETM[+s.armor])} set`;
   const QN=q=>q<=0?"min":q>=100?"max":"srednji";
-  const line=(w,a,q,qs,am,fd,h)=>`${rn(+w,WNAME[+w])} · ${rn(+a,SETM[+a])} set${qs?"":", "+QN(q)} · ${AMS[am]}${fd?" · "+FDS[fd]:""} · ~${fmt(h)} udaraca`;
+  recTitle.innerHTML=`${rn(+s.weap,WNAME[+s.weap])} i ${rn(+s.armor,SETM[+s.armor])} set`;
+  // prihod i trošak u dve kolone
+  const ln=(l,v)=>`<div class="ln"><span>${l}</span><span class="n">${fmt(v,0)}</span></div>`,I=r.inc,O=r.out;
+  recLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
+    `<div class="in"><h4>Prihod</h4>${ln("Firme",I.firms)}${ln("Tvoj rad",I.rad)}${ln("Case-ovi",I.cases)}${ln("Wooden case",I.wooden)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I,0)}</span></div></div>`;
+  // oprema kao pločice: komad, glavni stat, kvalitet i cena
+  const tiles=(x,food)=>{const P=x.st.P,f=v=>fmt(v),qn=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
+    const pc=(sl,code,r2,name,stat)=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r2,p.q),wy=p.mine?"imaš":way(code,r2,p.q)==="buy"?"kupi":"izradi";
+      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm">${stat}</span><span class="ts">${qn(p)} · ${fmt(c)} ${wy}</span></div>`};
+    return`<div class="tiles">`+pc("weapon",WCODE[x.w],x.w,WNAME[x.w],`${f(P.weapon.atk)} / ${f(P.weapon.cc)}%`)+
+      pc("helmet","helmet"+(x.a+1),x.a,"Šlem",`+${f(P.helmet.v)}%`)+pc("chest","chest"+(x.a+1),x.a,"Grudi",f(P.chest.v))+pc("pants","pants"+(x.a+1),x.a,"Pant.",f(P.pants.v))+
+      pc("boots","boots"+(x.a+1),x.a,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.a+1),x.a,"Ruk.",f(P.gloves.v))+
+      `<div class="tile tx"><span class="tn">Municija</span><span class="tm">+${AMMOM[x.ammo||"none"]??0}%</span><span class="ts">${AMS[x.ammo]||"bez"}</span></div>`+
+      `<div class="tile tx"><span class="tn">${food?"Hrana":"Bez jela"}</span><span class="tm">${food?"+"+FOODHP[food]+"%":"–"}</span><span class="ts">${food?FDS[food]+" × "+x.meals:" "}</span></div></div>`};
+  const sess=(k,sub,x,am,fd)=>`<div class="sess"><div class="sh"><span class="sk">${k}</span><span class="sm">${sub}</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${tiles({...x,ammo:am},fd)}</div>`;
   recSteps.innerHTML=
-    `<div class="rrow"><span class="k">Glavna sesija · 8h${s.pill==="yes"?" · pill na početku":" · bez pill-a"}</span><span class="v2">${line(s.weap,s.armor,s.q1,s.qs1,s.ammo,s.food,r.s1.h)}</span></div>`+
-    `<div class="rrow"><span class="k">Ostatak dana · bez jela</span><span class="v2">${line(s.weap2,s.armor2,s.q2,s.qs2,s.ammo2,null,r.s2.h)}</span></div>`+
-    `<div class="rrow"><span class="k">Oprema</span><span>${gearWords(r)}</span></div>`+
-    `<details class="det" open><summary>Statovi i cena opreme</summary><p class="hint" style="margin:4px 0">Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj koji daje najviše štete za novac.</p><p style="margin:6px 0 2px"><strong>Glavna sesija</strong></p>${gearStats(r.s1,!!s.qs1)}<p style="margin:6px 0 2px"><strong>Ostatak dana</strong></p>${gearStats(r.s2,!!s.qs2)}</details>`;
+    sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
+    (r.s2?sess("Ostatak dana",`bez jela · ${QN(s.q2)} kvalitet`,r.s2,s.ammo2,null):"")+
+    `<details class="det"><summary>Kupi ili napravi, i cene komada</summary><p style="margin:6px 0">${gearWords(r)}</p><p class="hint" style="margin:4px 0">Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj koji daje najviše štete za novac.</p><p style="margin:6px 0 2px"><strong>Glavna sesija</strong></p>${gearStats(r.s1,!!s.qs1)}<p style="margin:6px 0 2px"><strong>Ostatak dana</strong></p>${gearStats(r.s2,!!s.qs2)}</details>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;

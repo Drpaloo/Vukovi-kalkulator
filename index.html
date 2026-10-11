@@ -302,7 +302,7 @@ tr.cur td{background:var(--brass-soft)}
       <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se zna samo sa API ključem.</li></ul>
       <h3>4. Preporuka</h3>
       <ul><li>Pokazuje build sa najvećom štetom koji te ostavlja u plusu, za izabranu bitku.</li>
-      <li>Glavna sesija (8h, pill na početku) i ostatak dana. Za svaki komad piše samo cena: najviše što vredi platiti za njega, i da li da ga kupiš, napraviš ili već imaš. Cena je procena iz cena po kojima se komadi prodaju (plus 25%), jer ponude na marketu ne mogu da se vide uživo.</li>
+      <li>Glavna sesija (8h, pill na početku) i ostatak dana. Za svaki komad piše samo cena: najviše što vredi platiti za njega, i da li da ga kupiš, napraviš ili već imaš. Cena je iz cena po kojima se komadi prodaju i osvežava se na 6 sati, jer ponude na marketu ne mogu da se vide uživo, pa je to procena.</li>
       <li>„Primeni preporuku u kalkulator" prebacuje build u „Probaj svoj build".</li></ul>
       <h3>5. Preliv posle pill-a</h3>
       <ul><li>Kad si u debuffu, igra ti daje health u tickovima svakog punog sata.</li>
@@ -602,8 +602,8 @@ function way(code,r,q){const o=OVR[code];return o==="buy"||o==="craft"?o:bestWay
 let ASK={};try{ASK=JSON.parse(localStorage.getItem("vk-ask"))||{}}catch(e){}
 function market(code,q){if(ASK[code]>0)return ASK[code];const e=(D.equipment||{})[code]||FALLBACK.equipment[code];if(!e)return Infinity;
   if(q==null||e.a==null)return e.price;return Math.max(e.price*0.3,e.a+e.b*q)}
-// kupovina ide po ponudi, a ona je obično oko 25% iznad cena po kojima se prodavalo (javni API ne daje ponude), osim ako je cena upisana ručno
-const ASKM=1.25;
+// kupovina ide po ceni po kojima se komadi prodaju (javni API ne daje ponude), osim ako je cena upisana ručno
+const ASKM=1;
 function buy(code,q){return ASK[code]>0?ASK[code]:market(code,q)*ASKM}
 function itemCost(code,r,q){return way(code,r,q)==="buy"?buy(code,q):craftCost(r)}
 // trošak na 1k štete, kao u Intel builder-u: minus znači da build zarađuje
@@ -857,7 +857,7 @@ function renderRec(){
   recSteps.innerHTML=
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
     (r.s2?sess("Ostatak dana",`bez jela · ${QN(s.q2)} kvalitet`,r.s2,s.ammo2,null):"")+
-    `<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju (plus 25%), jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
+    `<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
@@ -969,7 +969,7 @@ function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
-  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je procena cene kupovine: medijana poslednjih 40 prodaja plus 25%, jer su ponude na marketu obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
+  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je medijana poslednjih 40 prodaja, a ponude na marketu su obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
   const pc=(name,code,r)=>{const mk=buy(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=buy(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}"><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
@@ -1612,7 +1612,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="a3c5e8d1b6";
+const VKV="b4d6f9e2c7";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

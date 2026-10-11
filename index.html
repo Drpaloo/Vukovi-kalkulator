@@ -305,6 +305,12 @@ tr.cur td{background:var(--brass-soft)}
     <button id="recApply" type="button" class="btn">Primeni preporuku u kalkulator</button>
     <p class="hint" id="recNote" style="margin:0"></p>
   </section>
+  <section class="panel" id="dbf" style="display:grid;gap:8px">
+    <div class="eyebrow">Pill debuff, preliv</div>
+    <h2 id="dbfTitle" style="margin:0">Računam…</h2>
+    <div id="dbfBody" style="font-size:14px;line-height:1.5;color:var(--muted,#9aa7bd)"></div>
+    <div class="tbl-wrap"><table class="t" id="dbfTbl"></table></div>
+  </section>
   <details class="panel" id="tryP">
     <summary>Probaj svoj build</summary>
     <div style="display:grid;gap:16px">
@@ -619,7 +625,7 @@ function render(){fixAmmo();
   statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+(r.s2?`. Druga sesija: ${fmt(r.s2.h)} udaraca po ${fmt(r.s2.Y)} = ${fk(r.s2.dmg)}`:"")+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.st.armor)} (${fmt(r.aE*100)}%) · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu. ${armTip(r.st.armor)}.`;
   gear(r);
   compare(s);
-  renderRec();
+  renderRec();renderDebuff();
   if(window.tSkM&&!document.getElementById("tab-skilovi").hidden)skManual();
 }
 const SLN={helmet:"Šlem",chest:"Grudi",pants:"Pantalone",boots:"Čizme",gloves:"Rukavice"};
@@ -711,6 +717,26 @@ function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v),q=p=>p.mine
     return`<tr><td>${name}</td><td>${t}</td><td class="num">${q(p)}</td><td class="num">${fmt(c)} (${p.mine?"imaš":way(code,r,p.q)==="buy"?"kupi":"izradi"})</td></tr>`}).join("");
   return`<table class="gst"><thead><tr><th>Komad</th><th>Stat</th><th class="num">Kvalitet</th><th class="num">Cena</th></tr></thead><tbody>${tr}<tr><td colspan="3"><strong>Ceo komplet</strong> <span class="hint">(cena novog na marketu za ono što imaš)</span></td><td class="num"><strong>${fmt(sum)}</strong></td></tr></tbody></table>`+
     `<p class="hint" style="margin:4px 0 8px">Sa skilovima: attack ${f(x.st.atk)}, precision ${f(x.st.prec)}%, crit ${f(x.st.cc)}% za +${f(x.st.cd)}%, armor ${f(x.aE*100)}%, dodge ${f(x.dE*100)}%. Prosečan udarac ${f(x.Y)}.</p>`}
+// debuff od pill-a: udaraš samo koliko health-a bi se inače bacilo (regen preko pune trake), pa kad debuff istekne bar je pun
+function debuffAdvice(s){const B=(D.me||{}).bar;if(!B||B.hp==null)return null;
+  const now=Date.now(),end=B.debuffEnd?Date.parse(B.debuffEnd):0,on=B.debuff&&end>now;
+  const T=on?(end-now)/36e5:15.5,c=on?B.hp:0,M=B.hpMax,r=B.hpReg;
+  const ov=Math.max(0,c+r*T-M),own=!_PC;if(own)_PC=prices();let L=[];
+  try{const P=prices(),q=s.qs1||(s.q1??50)/100;
+    for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;
+      const x=sess({...s,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+x.dmg/1000*(s.bp??0)+x.scrap,out=x.weapon+x.armor+x.ammo;
+      L.push({w,a,am,x,net:inc-out,inc,out})}}finally{if(own)_PC=null}
+  L.sort((p,q)=>q.net-p.net);return{on,T,c,M,r,ov,end,L}}
+function renderDebuff(){if(!window.dbfBody)return;const s=getState(),d=debuffAdvice(s);
+  if(!d){dbfTitle.textContent="Učitaj igrača";dbfBody.textContent="Savet za debuff čita tvoj health i vreme debuffa iz profila.";dbfTbl.innerHTML="";return}
+  const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"},b=d.L[0],x=b&&b.x;
+  dbfBody.innerHTML=(d.on?`Debuff ističe za <b>${hm(d.T)}</b>. Health sad ${fmt(d.c,1)}/${fmt(d.M)}, regen ${fmt(d.r,1)} na sat, do kraja bi bilo ${fmt(d.c+d.r*d.T,1)}.`:`Nisi u debuffu. Primer za sledeći put: debuff traje 15,5h, a health krene od 0.`)+
+    ` Preko pune trake se baca <b>${fmt(d.ov,1)}</b> health-a, i toliko je besplatno za udarce.`;
+  if(!x||d.ov<x.hpHit){dbfTitle.textContent="Nema preliva, ne udaraj";dbfTbl.innerHTML="";return}
+  const nowHits=Math.min(d.ov,Math.max(0,d.c))/x.hpHit,wait=d.ov>d.c+1e-9;
+  dbfTitle.textContent=b.net>0?`Isplati se: ~${fmt(x.h)} udaraca, ${sg(b.net)} coins`:`Ne isplati se: ${sg(b.net)} coins`;
+  dbfBody.innerHTML+=` Sa ${fmt(x.st.armor)} armora jedan udarac košta ${fmt(x.hpHit,2)} health-a, pa je to ~${fmt(x.h)} udaraca po ${fmt(x.Y)}.`+(d.on&&wait?` Sad možeš ${fmt(nowHits)} udaraca, ostalo kako health stiže.`:"")+(b.net>0?"":" Pill debuff smanjuje štetu na 40%, pa često ne pokrije trošak opreme.");
+  dbfTbl.innerHTML=`<tr><th>Oprema u debuffu</th><th>Udaraca</th><th>Šteta</th><th>Saldo</th></tr>`+d.L.slice(0,3).map(o=>`<tr><td>${WNAME[o.w]} · ${SETM[o.a]} set · ${AMS[o.am]}</td><td>${fmt(o.x.h)}</td><td>${fk(o.x.dmg)}</td><td>${sg(o.net)}</td></tr>`).join("")}
 function renderRec(){
   const b=bestBuild(+bonus.value);
   if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
@@ -1247,7 +1273,8 @@ async function loadUser(name){
     const [cl,mu,eq]=await Promise.all([api("country.getAllCountries"),user.mu?api("mu.getById",{muId:user.mu}).catch(()=>({})):{},api("inventory.fetchCurrentEquipment",{userId:user._id}).catch(()=>null)]);
     const countries=Array.isArray(cl)?cl:(cl.items||[]);countries.forEach(c=>CNAME[c._id]=c.name);
     const mine=countries.find(c=>c._id===user.country)||{};
-    const me={id:user._id,username:user.username,country:user.country,countryName:CNAME[user.country]||"",mu:user.mu||null,muName:mu.name||"",hq:(mu.activeUpgradeLevels||{}).headquarters||0,allies:mine.allies||[],wars:mine.warsWith||[],enemy:mine.enemy||null};
+    const me={id:user._id,username:user.username,country:user.country,countryName:CNAME[user.country]||"",mu:user.mu||null,muName:mu.name||"",hq:(mu.activeUpgradeLevels||{}).headquarters||0,allies:mine.allies||[],wars:mine.warsWith||[],enemy:mine.enemy||null,
+      bar:{hp:sk.health.currentBarValue??null,hpMax:sk.health.value,hpReg:sk.health.hourlyBarRegen||sk.health.value/10,debuffEnd:(user.buffs||{}).debuffEndAt||null,debuff:((user.buffs||{}).debuffCodes||[]).includes("cocain")}};
     // bonus saveza: kao u igri (alliance config): do 10% razvoja sveta +20%, pa -4% za svaki procenat preko, najmanje -20%
     if(mine.allianceId)try{const [al,wd]=await Promise.all([api("alliance.getById",{allianceId:mine.allianceId}),api("gameStat.getWorldDevelopment")]);
       const sh=wd>0?(al.coreDevelopment||0)/wd*100:0,mm=(al.memberCountries||[]);
@@ -1381,7 +1408,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="7a09db0ad2";
+const VKV="12748a522f";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

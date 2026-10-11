@@ -279,12 +279,6 @@ tr.cur td{background:var(--brass-soft)}
       <p class="hint" id="repMsg" style="margin:0" aria-live="polite"></p>
       <img id="repPrev" alt="Slika izveštaja" hidden>
     </div>
-    <div id="codeBox" style="display:grid;gap:10px">
-      <label for="codeIn">Nalepi izveštaj ili samo kod koji ti je kolega poslao</label>
-      <input id="codeIn" type="text" placeholder="RB1-3.3.light.steak.yes.yes.3.2.light.70" autocomplete="off">
-      <button id="codeLoad" type="button" class="btn">Učitaj u kalkulator</button>
-      <p class="hint" id="codeMsg" style="margin:0" aria-live="polite"></p>
-    </div>
     <div id="guideBox" class="guide" hidden>
       <h3>1. Početak</h3>
       <ul><li>Upiši svoje ime iz igre i klikni „Učitaj".</li>
@@ -864,10 +858,6 @@ const AMS={none:"bez municije",light:"zelena municija",ammo:"obična municija",h
 // kod nosi tačan bonus (i decimale) i, ako postoji, kvalitet po komadu za obe sesije
 function encode(s){return"RB1-"+[s.weap,s.armor,s.ammo,s.food,s.pill,s.s2,s.weap2,s.armor2,s.ammo2,(s.bonus<0?"n":"")+Math.abs(+(+s.bonus).toFixed(2))].join(".")+"-"+(+s.bp.toFixed(3))+"-"+s.q1+"."+s.q2+
   (s.qs1&&s.qs2?"-P"+[...QSL.map(k=>Math.round(s.qs1[k]*100)),...QSL.map(k=>Math.round(s.qs2[k]*100))].join("."):"")}
-function decode(t){const m=String(t).match(/RB1-([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(bread|steak|fish)\.(yes|no)\.(yes|no)\.([0-5])\.([0-5])\.(none|light|ammo|heavy)\.(n?\d{1,3}(?:\.\d{1,2})?)(?:-(\d+(?:\.\d+)?))?(?:-(\d{1,3})\.(\d{1,3}))?(?:-P((?:\d{1,3}\.){11}\d{1,3}))?/);
-  if(!m)return null;const b=Math.max(-100,Math.min(150,+m[10].replace("n","-"))),P=m[14]?m[14].split(".").map(x=>Math.min(100,+x)/100):null,
-    qo=o=>Object.fromEntries(QSL.map((k,i)=>[k,P[o+i]]));
-  return{weap:m[1],armor:m[2],ammo:m[3],food:m[4],pill:m[5],s2:m[6],weap2:m[7],armor2:m[8],ammo2:m[9],bonus:b,bp:m[11]!=null?+m[11]:null,q1:m[12]!=null?Math.min(100,+m[12]):50,q2:m[13]!=null?Math.min(100,+m[13]):50,...(P?{qs1:qo(0),qs2:qo(QSL.length)}:{})}}
 function reportLines(){
   const s=getState(),r=calc(s);
   const L=[[`WarEra build · ${D.me.username||"?"}${D.me.muName?" (MU "+D.me.muName+")":""}`,"h"],
@@ -879,8 +869,8 @@ function reportLines(){
     [`Skilovi: attack ${BASE.attack}, precision ${BASE.precision}, crit ${BASE.cc}/${BASE.cd}, armor ${BASE.armor}, dodge ${BASE.dodge}, health ${BASE.health}, hunger ${BASE.hunger}, loot ${BASE.loot}, rank +${BASE.rank}%`,"m"],
     [`Kod za kalkulator: ${encode(s)}`,"c"]];
   return L}
-function openShare(mode){share.hidden=false;repBox.hidden=mode!=="rep";codeBox.hidden=mode!=="code";guideBox.hidden=mode!=="guide";shareTitle.textContent=mode==="rep"?"Izveštaj za kolege":mode==="guide"?"Uputstvo":"Učitaj build od kolege";
-  repMsg.textContent="";codeMsg.textContent="";repPrev.hidden=true;
+function openShare(mode){share.hidden=false;repBox.hidden=mode!=="rep";guideBox.hidden=mode!=="guide";shareTitle.textContent=mode==="rep"?"Izveštaj za kolege":"Uputstvo";
+  repMsg.textContent="";repPrev.hidden=true;
   if(mode==="rep")repText.value=reportLines().map(l=>l[0]).join("\n");
   share.scrollIntoView({behavior:"smooth",block:"start"})}
 async function copyText(){
@@ -1019,8 +1009,6 @@ guideOpen.addEventListener("click",()=>openShare("guide"));
 shareClose.addEventListener("click",()=>{share.hidden=true});
 repCopy.addEventListener("click",copyText);
 repImg.addEventListener("click",saveImg);
-codeLoad.addEventListener("click",()=>{const st=decode(codeIn.value);if(!st){codeMsg.textContent="Ne prepoznajem kod. Treba da počinje sa RB1-.";return}
-  setState(st);APQ=st.qs1?{qs1:st.qs1,qs2:st.qs2}:null;render();codeMsg.textContent="Učitano. Kalkulator ispod sada prikazuje kolegin build sa tvojim skilovima i cenama.";});
 const qNear=o=>{const v=QSL.reduce((t,k)=>t+o[k],0)/QSL.length*100;return v<25?0:v>75?100:50};
 recApply.addEventListener("click",()=>{if(window._rec){const x={...window._rec};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render();document.querySelector(".strip").scrollIntoView({behavior:"smooth"})}});
 function craftPanel(){
@@ -1133,7 +1121,7 @@ function showTab(t){if(t==="skilovi")setTimeout(skManual,0);if(t==="skilovi")pla
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b){showTab(b.dataset.tab);window.scrollTo({top:0})}});
 // uvek kreće od Pregleda
 // duga objašnjenja idu iza „objašnjenje“, kratke poruke ostaju vidljive
-const KEEPH=new Set(["resetNote","bInfo","hitsNote","mineNote","barNote","repMsg","codeMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
+const KEEPH=new Set(["resetNote","bInfo","hitsNote","mineNote","barNote","repMsg","recNote","skLeft","skMNote","plInNote","plReset","plOrder","ecSelf","plFree"]);
 document.querySelectorAll(".wrap .hint, .wrap .foot").forEach(h=>{if(KEEPH.has(h.id)||h.closest("summary,label,#share,#login,.why"))return;
   const d=document.createElement("details");d.className="why";d.innerHTML="<summary>objašnjenje ▾</summary>";h.replaceWith(d);d.appendChild(h);if(h.tagName==="P")h.style.margin="0"});
 // ručni raspored skilova: menjaš nivoe i vidiš štetu i saldo
@@ -1595,7 +1583,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="c3e0a9f1d7";
+const VKV="d4f1b2a8e6";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

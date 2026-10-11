@@ -489,6 +489,10 @@ const AMMOM={none:0,light:10,ammo:20,heavy:40};
 const okA=(w,m)=>(+w===0)===(m==="none");
 const REC={weap:"4",armor:"3",ammo:"light",food:"steak",pill:"yes",s2:"yes",weap2:"1",armor2:"1",ammo2:"light",bonus:70};
 const Dn=x=>x/(x+40);
+// armor skida health u stepenicama: viškom ispod sledeće stepenice ništa ne dobijaš
+const armStep=x=>Math.round(100*(1-Dn(x)));
+function armTip(x){const v=armStep(x);let lo=Math.floor(x);while(lo>0&&armStep(lo-1)===v)lo--;let nx=Math.floor(x)+1;while(armStep(nx)===v&&nx<1000)nx++;
+  const extra=+(x-lo).toFixed(1);return`armor ${fmt(x)} je na stepenici ${fmt(v/10,1)} health po udarcu (počinje od ${lo})`+(extra>0?`, ${fmt(extra,1)} viška ne donosi ništa`:"")+`, sledeća stepenica kreće od ${nx}`}
 
 let _PC=null;
 function prices(){if(_PC)return _PC;const p=D.prices;return{
@@ -537,7 +541,7 @@ function sess(s,w,a,ammo,pmult,health,meals,q){
   const at=st.atk*(1+s.bonus/100)*(1+AMMOM[ammo]/100)*pmult*(1+BASE.rank/100);
   const Y=(1-A)*at*.5+A*(1-U)*at+A*U*at*(1+m);
   // igra health po udarcu zaokružuje na 0,1, pa armor radi u stepenicama (47 → 4,6, 48–49 → 4,5 …)
-  const aE=Dn(st.armor), dE=Dn(st.dodge), hpHit=Math.round(100*(1-aE))/10*(1-dE);
+  const aE=1-Math.round(100*(1-Dn(st.armor)))/100, dE=Dn(st.dodge), hpHit=Math.round(100*(1-Dn(st.armor)))/10*(1-dE);
   const h=(health+meals*BASE.health*FOODHP[s.food]/100)/hpHit, undodged=h*(1-dE);
   const wCost=itemCost(WCODE[w],w,st.P.weapon.q), setCost=SLOTS.reduce((t,sl)=>t+itemCost(sl+(a+1),a,st.P[sl].q),0);
   return{w,a,q,wUse:h/100,aUse:undodged/100,h,Y,st,aE,dE,hpHit,wCost,setCost,meals,dmg:h*Y,landed:h*A,
@@ -612,7 +616,7 @@ function render(){fixAmmo();
     row("Scraps kad se oprema sama rastavi",r.inc.scrap)+row(`Ugovor i bounty (${(s.bp??0).toFixed(3)} na 1k)`,r.inc.bounty)+
     `<tr class="sec"><td colspan="2">Trošak</td></tr>`+row("Habanje oružja",r.out.weapon,1)+row("Habanje seta",r.out.armor,1)+row("Hrana",r.out.food,1)+row("Municija",r.out.ammo,1)+row("Pill",r.out.pill,1)+
     `<tr class="total"><td>Saldo</td><td style="color:${r.net>=0?"var(--good)":"var(--bad)"}">${sg(r.net)}</td></tr>`;
-  statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+(r.s2?`. Druga sesija: ${fmt(r.s2.h)} udaraca po ${fmt(r.s2.Y)} = ${fk(r.s2.dmg)}`:"")+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.aE*100)}% · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu`;
+  statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+(r.s2?`. Druga sesija: ${fmt(r.s2.h)} udaraca po ${fmt(r.s2.Y)} = ${fk(r.s2.dmg)}`:"")+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.st.armor)} (${fmt(r.aE*100)}%) · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu. ${armTip(r.st.armor)}.`;
   gear(r);
   compare(s);
   renderRec();
@@ -1377,7 +1381,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   cs.filter(c=>(me.mu&&c.currentWinner===me.mu)||c.currentWinnerUser===me.id).forEach(c=>b[c.forCountrySide==="defender"?"def":"att"].ct.push({perK:+(c.currentPerK||0).toFixed(4),min:c.minimumDamage||0,pay:c.currentPayout||0}));
   return true};
 
-const VKV="e1c0bd5108";
+const VKV="7a09db0ad2";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

@@ -861,8 +861,7 @@ function renderRec(){
   const sess=(k,sub,x,am,fd)=>`<div class="sess"><div class="sh"><span class="sk">${k}</span><span class="sm">${sub}</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${tiles({...x,ammo:am},fd)}</div>`;
   recSteps.innerHTML=
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
-    (r.s2?sess("Ostatak dana",`bez jela · ${QN(s.q2)} kvalitet`,r.s2,s.ammo2,null):"")+
-    `<details class="det"><summary>Kupi ili napravi, i cene komada</summary><p style="margin:6px 0">${gearWords(r)}</p><p class="hint" style="margin:4px 0">Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj koji daje najviše štete za novac.</p><p style="margin:6px 0 2px"><strong>Glavna sesija</strong></p>${gearStats(r.s1,!!s.qs1)}<p style="margin:6px 0 2px"><strong>Ostatak dana</strong></p>${gearStats(r.s2,!!s.qs2)}</details>`;
+    (r.s2?sess("Ostatak dana",`bez jela · ${QN(s.q2)} kvalitet`,r.s2,s.ammo2,null):"");
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
@@ -1567,7 +1566,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="8bcab3244e";
+const VKV="1c906c8b0b";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

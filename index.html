@@ -1367,7 +1367,8 @@ async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId
   try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}
   try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}
   try{const r=await fetch("data/damage.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)DSRV=await r.json()}catch(e){}
-  dmgLive();if(!window._dl)window._dl=setInterval(dmgLive,6e5);
+  // uživo čitanje članova ide tek posle bitaka, bounty-ja i ugovora, da im ne oduzme red kod igre
+  setTimeout(dmgLive,20000);if(!window._dl)window._dl=setInterval(dmgLive,6e5);
   try{const r=await fetch("data/pool.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){POOLD=await r.json();RECK="";try{render()}catch(e){}}}catch(e){}}
 function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"";
   const sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
@@ -1380,7 +1381,7 @@ function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"
 // uživo: satni snimak je osnova, a pri otvaranju (i na 10 minuta dok je stranica otvorena) čitamo trenutne zbirove članova i dodajemo razliku u današnji dan
 async function dmgLive(){if(!DSRV||(D.me||{}).mu!==DSRV.mu||document.hidden)return;if(Date.now()-(DSRV._lt||0)<3e5)return;DSRV._lt=Date.now();
   const day=new Date().toISOString().slice(0,10),ids=Object.keys(DSRV.players);
-  await pool(ids,4,async id=>{try{const u=await api("user.getUserById",{userId:id}),R=u.rankings||{},A=R.userDamages&&R.userDamages.value,B=R.userBounty&&R.userBounty.value,p=DSRV.players[id];if(!(A>=0)||!(B>=0))return;
+  await pool(ids,2,async id=>{try{const u=await api("user.getUserById",{userId:id}),R=u.rankings||{},A=R.userDamages&&R.userDamages.value,B=R.userBounty&&R.userBounty.value,p=DSRV.players[id];if(!(A>=0)||!(B>=0))return;
     if(p.a!=null&&A>=p.a){p.d[day]=(p.d[day]||0)+(A-p.a);p.b[day]=+((p.b[day]||0)+Math.max(0,B-(p.bt||0))).toFixed(3)}p.a=A;p.bt=B}catch(e){}});
   try{ovRender()}catch(e){}}
 // šteta i bounty cele jedinice po danima (data/damage.json), nedelja ide od ponedeljka do nedelje po UTC
@@ -1681,7 +1682,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="c1e3a6f9d4";
+const VKV="d2f4b7a0e5";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

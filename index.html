@@ -998,7 +998,18 @@ function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bou
   if(act)bpHint.innerHTML=`${pend}Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins`:""}), a bounty se tada ne dodaje. Kad se ugovor popuni računa se bounty ${bo.toFixed(3)}.${pro}`;
   else if(ct.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(ct.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
   else bpHint.innerHTML=`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
+  if(b._at)bpHint.innerHTML+=` <span class="hint">Proveravano u ${new Date(b._at).toLocaleTimeString("sr-Latn",{hour:"2-digit",minute:"2-digit"})}, a kalkulator proverava sam na 5 min.</span>`;
   try{localStorage.setItem("rb-battle",JSON.stringify({id:b.id,side:BT.side}))}catch(e){}}
+// ugovor i bounty se menjaju dok je stranica otvorena (aukcija ističe, ugovor se popuni, fond bounty-ja se isprazni),
+// pa se bitka ponovo čita na 5 min i kad se vratiš na stranicu; ne dira se dok kucaš u neko polje
+let _rbBusy=false;
+async function refreshBattleLive(){const cur=BT.b;if(_rbBusy||!cur||!cur.id||document.hidden)return;
+  const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+  _rbBusy=true;try{const nb=await battleById(cur.id);if(BT.b!==cur)return;const side=BT.side;
+    if(cur.active&&!nb.active){BT.b=nb;bp.value="0";bInfo.textContent=`${bName(nb)}. Bitka je završena, ugovor i bounty se više ne računaju.`;bpHint.textContent="Bitka je završena, pa ugovor i bounty više ne važe.";render();return}
+    pickBattle(nb);if(side!==BT.side){BT.side=side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}
+  }catch(e){}finally{_rbBusy=false}}
+setInterval(refreshBattleLive,5*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshBattleLive()});
 // posle osvežavanja vrati bitku koju si poslednju izabrao, ako je još aktivna
 function restoreBattle(){let x=null;try{x=JSON.parse(localStorage.getItem("rb-battle"))}catch(e){}if(!x)return;
   if(!(D.activeBattles||[]).some(y=>y.id===x.id))return;battleById(x.id).then(b=>{if(!b.active)return;pickBattle(b);if(x.side&&x.side!==BT.side){BT.side=x.side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}}).catch(()=>{})}
@@ -1513,7 +1524,7 @@ async function battleById(id){
   try{r=await region(b.defender.region||b.attacker.region)}catch(e){}let ra={};if(b.attacker.region&&b.attacker.region!==b.defender.region)try{ra=await region(b.attacker.region)}catch(e){}let bch=null;if((ra.activeUpgradeLevels||{}).base)try{const u=await api("upgrade.getUpgradeByTypeAndEntity",{upgradeType:"base",regionId:b.attacker.region});bch=[u.lastUpgradeAt,u.lastDowngradeAt].filter(Boolean).sort().pop()||null}catch(e){}
   try{const o=await occBy();if(o&&D.me)D.me.occBy=o}catch(e){}
   const sd=k=>({c:b[k].country,n:CNAME[b[k].country]||(b.type==="resistance"&&k==="attacker"?"Pobunjenici":"?"),co:b[k].countryOrders||[],mo:b[k].muOrders||[],bounty:(b[k].moneyPool||0)>0?(b[k].moneyPer1kDamages||0):0});
-  return{id:b._id,type:b.type,at:b.createdAt,active:b.isActive,region:r.name||"",bunker:(r.activeUpgradeLevels||{}).bunker||0,base:(ra.activeUpgradeLevels||{}).base||0,baseAt:bch,linked:r.isLinkedToCapital!==false,lostAtt:!!(ra.country&&ra.country!==b.attacker.country),big:!!b.isBigBattle,att:sd("attacker"),def:sd("defender")}}
+  return{id:b._id,_at:Date.now(),type:b.type,at:b.createdAt,active:b.isActive,region:r.name||"",bunker:(r.activeUpgradeLevels||{}).bunker||0,base:(ra.activeUpgradeLevels||{}).base||0,baseAt:bch,linked:r.isLinkedToCapital!==false,lostAtt:!!(ra.country&&ra.country!==b.attacker.country),big:!!b.isBigBattle,att:sd("attacker"),def:sd("defender")}}
 
 async function loadUser(name){
   err.textContent="";loadBtn.disabled=true;
@@ -1690,7 +1701,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="a41f68c2d9";
+const VKV="d52b7e90c3";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

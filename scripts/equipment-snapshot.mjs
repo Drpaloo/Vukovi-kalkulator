@@ -1,7 +1,7 @@
 // Snimak cena opreme (poslednjih 40 prodaja po komadu, medijana i zavisnost cene od kvaliteta).
 // Prodaje opreme igra daje samo uz API ključ, pa ovo radi GitHub Actions sa tajnom WARERA_API_KEY,
 // a kalkulator čita data/equipment.json, tako da svaki igrač dobija sveže cene i bez svog ključa.
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const API = "https://api2.warera.io/trpc/";
 const KEY = process.env.WARERA_API_KEY || "";
@@ -50,5 +50,8 @@ for (const code of codes) {
   await sleep(120);
 }
 if (ok < 20) { console.error(`samo ${ok} od ${codes.length} komada, ne diram fajl`); process.exit(1); }
+// radi se na svakih 20 min; ako se cene nisu promenile fajl se ne menja (manje commitova), a oznaka vremena se osvežava najmanje na 2 h
+let prev = null; try { prev = JSON.parse(readFileSync(FILE, "utf8")); } catch {}
+if (prev && JSON.stringify(prev.items) === JSON.stringify(items) && Date.now() - Date.parse(prev.updated) < 2 * 36e5) { console.log(`cene nisu promenjene (${ok} komada), ne diram fajl`); process.exit(0); }
 writeFileSync(FILE, JSON.stringify({ updated: new Date().toISOString(), items }));
 console.log(`snimljeno ${ok} od ${codes.length} komada`);

@@ -2,11 +2,15 @@ name: Snimak cena opreme
 
 on:
   schedule:
-    - cron: "20 */6 * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: equipment
+  cancel-in-progress: false
 
 jobs:
   cene:

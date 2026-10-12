@@ -995,6 +995,20 @@ async function refreshBattleLive(){const cur=BT.b;if(_rbBusy||!cur||!cur.id||doc
     pickBattle(nb);if(side!==BT.side){BT.side=side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}
   }catch(e){}finally{_rbBusy=false}}
 setInterval(refreshBattleLive,5*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshBattleLive()});
+// cene se menjaju dok je stranica otvorena: hrana, municija, pill, case-ovi i materijal se čitaju uživo, a oprema iz snimka (proverava se na 20 min).
+// loš ili prazan odgovor nikad ne prepisuje staru cenu; račun se ponovo pravi samo ako se nešto zaista promenilo
+let _rpBusy=false;
+async function refreshPrices(){if(_rpBusy||document.hidden||!D.me||!D.me.id)return;
+  const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+  _rpBusy=true;try{
+    const PR={};await pool(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","scraps","steel"],4,async it=>{PR[it]=await book(it)});
+    const before=JSON.stringify([D.prices,D.craftMats,D.equipment,D.equipAt]),ok=x=>x&&x.bid>0&&x.ask>0,pr={...D.prices},set=(k,v)=>{if(v>0)pr[k]=v};
+    set("steak",PR.steak.ask);set("ask_bread",PR.bread.ask);set("ask_cookedFish",PR.cookedFish.ask);set("ask_lightAmmo",PR.lightAmmo.ask);set("ask_ammo",PR.ammo.ask);set("ask_heavyAmmo",PR.heavyAmmo.ask);set("ask_cocain",PR.cocain.ask);set("case1",PR.case1.bid);set("case2",PR.case2.bid);
+    D.prices=pr;if(ok(PR.scraps)&&ok(PR.steel))D.craftMats={...(D.craftMats||{}),scraps:PR.scraps,steel:PR.steel};
+    try{const rs=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/3e5));if(rs.ok){const q=await rs.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
+    if(JSON.stringify([D.prices,D.craftMats,D.equipment,D.equipAt])!==before){_PC=null;RECK="";try{render()}catch(e){}}
+  }catch(e){}finally{_rpBusy=false}}
+setInterval(refreshPrices,5*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshPrices()});
 // posle osvežavanja vrati bitku koju si poslednju izabrao, ako je još aktivna
 function restoreBattle(){let x=null;try{x=JSON.parse(localStorage.getItem("rb-battle"))}catch(e){}if(!x)return;
   if(!(D.activeBattles||[]).some(y=>y.id===x.id))return;battleById(x.id).then(b=>{if(!b.active)return;pickBattle(b);if(x.side&&x.side!==BT.side){BT.side=x.side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}}).catch(()=>{})}
@@ -1024,7 +1038,7 @@ function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
-  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je medijana poslednjih 40 prodaja, a ponude na marketu su obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
+  priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz snimka koji se proverava na 20 min, poslednja promena ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Hrana, municija, pill, case-ovi i materijal su uživo i osvežavaju se na 5 min dok je stranica otvorena. Sivi broj je medijana poslednjih 40 prodaja, a ponude na marketu su obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
   const pc=(name,code,r)=>{const mk=buy(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=buy(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}">${b==="buy"?`<a class="chip g" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri" style="text-decoration:none">Kupi ↗</a>`:`<span class="chip b">Napravi</span>`}</div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
@@ -1574,7 +1588,7 @@ async function loadUser(name){
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     // sveže cene opreme iz dnevnog snimka (GitHub zadatak), da svaki igrač dobije aktuelne cene i bez ključa
-    try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
+    try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/3e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
     wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
@@ -1686,7 +1700,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="f13a9c60d7";
+const VKV="9a2d4e71c5";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

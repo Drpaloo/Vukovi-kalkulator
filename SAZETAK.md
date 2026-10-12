@@ -10,12 +10,12 @@ Kalkulator ratnog budžeta za igru WarEra (MU Vukovi). Igrač upiše ime iz igre
 | Fajl | Šta radi |
 |---|---|
 | `index.html` (~205 KB, ~1700 redova) | Cela aplikacija: HTML + CSS + JS u jednom fajlu |
-| `data/equipment.json` | Cene opreme po komadu (medijana poslednjih 40 prodaja + linearna ocena po kvalitetu a+b·q), osvežava ga GitHub zadatak na 6 h |
+| `data/equipment.json` | Cene opreme po komadu (medijana poslednjih 40 prodaja + linearna ocena po kvalitetu a+b·q), proverava ga GitHub zadatak na 20 min (fajl se menja samo kad se cene promene, a oznaka vremena najmanje na 2 h) |
 | `data/wealth.json` | Bogatstvo 25 članova MU Vukovi po danima (istorija 30+ dana, backfill sa SPYWarera, dalje dnevni snimak) |
 | `data/damage.json` | Šteta i bounty članova MU po danima + poslednji zbirovi (`a`, `bt`) za računanje razlike, satni snimak |
 | `data/pool.json` | Uzorak 38–60 poslednjih rundi: šteta → predmet (za pool loot), satni snimak |
 | `scripts/*.mjs` | `wealth-snapshot`, `equipment-snapshot`, `damage-snapshot`, `pool-snapshot` (Node 20, bez zavisnosti) |
-| `.github/workflows/` | `wealth.yml` (dnevno 23:40 UTC), `equipment.yml` (svakih 6 h, treba secret `WARERA_API_KEY`), `damage.yml` (svakog sata u :07, pokreće damage + pool snimak) |
+| `.github/workflows/` | `wealth.yml` (dnevno 23:40 UTC), `equipment.yml` (svakih 20 min, treba secret `WARERA_API_KEY`), `damage.yml` (svakog sata u :07, pokreće damage + pool snimak) |
 | `README.md` | Kratak opis (zastareo, ne pominje nove funkcije) |
 
 ## 3. Struktura `index.html`
@@ -100,3 +100,4 @@ Glavni delovi:
 - Pozivi ka WarEra imaju ograničenje čekanja od 20 s i razumljive poruke za pokvaren odgovor ili prekid mreže; GitHub zadaci imaju `timeout-minutes`.
 - Imena iz igre (MU, savez, firma, igrač) ulaze u HTML kroz `esc()`.
 - Pregledano bez potrebe za izmenom: snimak štete (zbir je ukupan, ne resetuje se), formule štete i habanja, optimizator.
+- Cene: oprema se snima na 20 min, a hrana, municija, pill, case-ovi i materijal se pri otvorenoj stranici ponovo čitaju uživo na 5 min (`refreshPrices`). Prazan ili loš odgovor ne prepisuje staru cenu.

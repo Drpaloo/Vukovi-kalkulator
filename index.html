@@ -891,7 +891,7 @@ function renderRec(){
   // oprema kao pločice: komad, glavni stat, kvalitet i cena
   const tiles=(x,food)=>{const P=x.st.P,f=v=>fmt(v),qn=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
     const pc=(sl,code,r2,name,stat)=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r2,p.q),wy=p.mine?"imaš":way(code,r2,p.q)==="buy"?"kupi":"izradi";
-      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr">${fmt(c,c<100?1:0)}</span><span class="ts">${wy==="kupi"?`<a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a>`:wy}</span></div>`};
+      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr">${fmt(c,c<100?1:0)}</span><span class="ts">${wy==="izradi"?wy:(wy==="imaš"?"imaš · ":"")+`<a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a>`}</span></div>`};
     return`<div class="tiles">`+pc("weapon",WCODE[x.w],x.w,WNAME[x.w],`${f(P.weapon.atk)} / ${f(P.weapon.cc)}%`)+
       pc("helmet","helmet"+(x.a+1),x.a,"Šlem",`+${f(P.helmet.v)}%`)+pc("chest","chest"+(x.a+1),x.a,"Grudi",f(P.chest.v))+pc("pants","pants"+(x.a+1),x.a,"Pant.",f(P.pants.v))+
       pc("boots","boots"+(x.a+1),x.a,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.a+1),x.a,"Ruk.",f(P.gloves.v))+
@@ -1686,7 +1686,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="f4b6d9c2a7";
+const VKV="a5c7e0d3b8";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

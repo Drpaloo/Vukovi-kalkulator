@@ -1,0 +1,25 @@
+name: Snimak konfiguracije igre
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cfg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preuzmi gameConfig
+        run: |
+          mkdir -p data
+          curl -fsS --retry 3 --max-time 30 'https://api2.warera.io/trpc/gameConfig.getGameConfig?input=%7B%7D' -o data/gameconfig.json
+          node -e "JSON.parse(require('fs').readFileSync('data/gameconfig.json','utf8'))"
+      - name: Upiši fajl
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gameconfig.json
+          if git diff --cached --quiet; then echo "nema promena"; else git commit -m "Snimak gameConfig $(date -u +%F\ %H:%M)"; git pull --rebase -q; git push; fi

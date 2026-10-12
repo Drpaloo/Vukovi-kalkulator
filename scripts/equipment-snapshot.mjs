@@ -12,28 +12,36 @@ const median = v => { const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m
 
 if (!KEY) { console.log("WARERA_API_KEY nije podešen, preskačem (dodaj ga kao tajnu u Settings > Secrets and variables > Actions)."); process.exit(0); }
 
+// ponavlja pokušaj kod 429, 5xx, mrežnih grešaka i neispravnog odgovora; ostale 4xx greške odmah odustaju
 async function api(proc, input, auth) {
-  for (let t = 0; t < 6; t++) {
-    const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)), { headers: auth ? { "X-API-Key": KEY } : {}, signal: AbortSignal.timeout(20000) });
-    if (r.status === 429) { await sleep(1500 * 2 ** t); continue; }
-    if (!r.ok) throw new Error(`${proc} ${r.status}`);
-    const j = await r.json().catch(() => null);
-    if (!j || !j.result) throw new Error(`${proc}: neispravan odgovor`);
-    return j.result.data;
+  let last = proc + ": nepoznata greška";
+  for (let t = 0; t < 5; t++) {
+    if (t) await sleep(1000 * 2 ** (t - 1));
+    try {
+      const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)), { headers: auth ? { "X-API-Key": KEY } : {}, signal: AbortSignal.timeout(20000) });
+      if (r.status === 429 || r.status >= 500) { last = `${proc} ${r.status}`; continue; }
+      if (!r.ok) throw Object.assign(new Error(`${proc} ${r.status}`), { fatal: true });
+      const j = await r.json().catch(() => null);
+      if (!j || !j.result) { last = `${proc}: neispravan odgovor`; continue; }
+      return j.result.data;
+    } catch (e) { if (e.fatal) throw e; last = `${proc}: ${e.message}`; }
   }
-  throw new Error(`${proc}: previše zahteva (429)`);
+  throw new Error(last);
 }
 
-const cfg = (await api("gameConfig.getGameConfig", {}, false)).items;
+let cfg;
+try { cfg = (await api("gameConfig.getGameConfig", {}, false)).items; }
+catch (err) { console.log(`::warning::gameConfig nije dostupan (${err.message}), ne diram fajl`); process.exit(0); }
 const WEAPONS = ["knife", "gun", "rifle", "sniper", "tank", "jet"];
 const SLOTS = ["helmet", "chest", "pants", "boots", "gloves"];
 const codes = [...WEAPONS, ...SLOTS.flatMap(s => [1, 2, 3, 4, 5, 6].map(r => s + r))];
 
 const items = {};
-let ok = 0;
+let ok = 0, fails = 0;
 for (const code of codes) {
   try {
     const d = await api("transaction.getPaginatedTransactions", { itemCode: code, transactionType: "itemMarket", limit: 40 }, true);
+    fails = 0;
     const good = d.items.filter(t => (t.item?.state || 0) >= 20 && Number.isFinite(t.money));
     const v = good.map(t => t.money * 100 / t.item.state).sort((a, b) => a - b);
     if (!v.length) continue;
@@ -46,10 +54,11 @@ for (const code of codes) {
       if (vr > 0.05) { const b = Math.max(0, pts.reduce((a, p) => a + (p[0] - mq) * (p[1] - mp), 0) / vr); e.a = Math.round((mp - b * mq) * 1000) / 1000; e.b = Math.round(b * 1000) / 1000; }
     }
     items[code] = e; ok++;
-  } catch (err) { console.error("neuspeh", code, err.message); }
+  } catch (err) { console.error("neuspeh", code, err.message); if (++fails >= 4) { console.error("4 uzastopna neuspeha, prekidam"); break; } }
   await sleep(120);
 }
-if (ok < 20) { console.error(`samo ${ok} od ${codes.length} komada, ne diram fajl`); process.exit(1); }
+if (ok === 0) { console.error(`nijedan od ${codes.length} komada nije uspeo, ne diram fajl`); process.exit(1); }
+if (ok < 20) { console.log(`::warning::samo ${ok} od ${codes.length} komada, ne diram fajl`); process.exit(0); }
 // radi se na svakih 20 min; ako se cene nisu promenile fajl se ne menja (manje commitova), a oznaka vremena se osvežava najmanje na 2 h
 let prev = null; try { prev = JSON.parse(readFileSync(FILE, "utf8")); } catch {}
 if (prev && JSON.stringify(prev.items) === JSON.stringify(items) && Date.now() - Date.parse(prev.updated) < 2 * 36e5) { console.log(`cene nisu promenjene (${ok} komada), ne diram fajl`); process.exit(0); }

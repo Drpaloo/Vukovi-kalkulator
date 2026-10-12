@@ -329,6 +329,7 @@ tr.cur td{background:var(--brass-soft)}
       <h3>9. Poruke koje treba znati</h3>
       <ul><li>Armor radi u stepenicama: višak iznad praga stepenice ne donosi ništa, pa gledaj levi broj u tabeli stepenica.</li>
       <li>Procene prihoda (case-ovi, bounty) zavise od tržišta u tom trenutku.</li>
+      <li>Pool loot: igra posle svake runde deli predmete po rangu štete u toj rundi (bolji rang, bolji predmet). Kalkulator iz poslednjih rundi vidi koji bi predmet dobio sa tvojom štetom po rundi, pa taj broj prati tvoj trenutni build. Ako imaš svoj podatak, upiši ga u „Pool loot dnevno".</li>
       <li>Cene opreme su iz cena po kojima su se komadi prodavali, a ponude na marketu su obično malo skuplje. Zato je broj na komadu procena, a tačnu cenu možeš da upišeš ručno u Opremi.</li>
       <li>Ako se nešto zaglavi, na dnu stranice je „Resetuj kalkulator".</li></ul>
     </div>
@@ -374,7 +375,7 @@ tr.cur td{background:var(--brass-soft)}
           <div style="display:grid;gap:6px;margin-top:8px">
           <label for="firmMan" style="font-size:14px">Zarada firmi dnevno (prazno = računa API)</label><input type="number" id="firmMan" min="0" step="1" inputmode="decimal">
           <label for="woodIn" style="font-size:14px">Wooden case-ovi dnevno, u coins</label><input type="number" id="woodIn" min="0" step="1" value="63" inputmode="decimal">
-          <label for="poolIn" style="font-size:14px">Pool loot dnevno, u coins</label><input type="number" id="poolIn" min="0" step="1" value="76" inputmode="decimal">
+          <label for="poolIn" style="font-size:14px">Pool loot dnevno, u coins (prazno = računa se sam)</label><input type="number" id="poolIn" min="0" step="1" value="" placeholder="auto" inputmode="decimal">
           <span class="hint" id="poolNote">Wooden case-ovi i pool loot su procene. Upiši svoje ako znaš koliko ti padne.</span></div>
         </details>
       </fieldset>
@@ -667,7 +668,7 @@ function calc(s){
   const S=[a,b].filter(Boolean), sum=k=>S.reduce((t,x)=>t+x[k],0);
   const h=sum("h"),dmg=sum("dmg"),meals=sum("meals");
   const num=(el,d)=>{const v=parseFloat(String(el.value).replace(",","."));return isFinite(v)&&v>=0?v:d};
-  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:num(woodIn,63),pool:num(poolIn,76),scrap:sum("scrap"),bounty:dmg/1000*(s.bp??0)};
+  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:num(woodIn,63),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:dmg/1000*(s.bp??0)};
   const out={weapon:sum("weapon"),armor:sum("armor"),food:meals*P.food[s.food],ammo:sum("ammo"),pill:pill?P.pill:0};
   const I=Object.values(inc).reduce((x,y)=>x+y,0),O=Object.values(out).reduce((x,y)=>x+y,0);
   return{h,meals,dmg,Y:a.Y,st:a.st,aE:a.aE,dE:a.dE,hpHit:a.hpHit,wCost:a.wCost,setCost:a.setCost,s1:a,s2:b,inc,out,I,O,net:I-O};
@@ -1351,13 +1352,22 @@ ecRun.addEventListener("click",async()=>{const E=D.econ;if(!E){ecSum.textContent
 const wealthKey=()=>"vk-wealth-"+((D.me||{}).id||"");
 function wealthLoad0(){try{return JSON.parse(localStorage.getItem(wealthKey()))||[]}catch(e){return[]}}
 // dnevni snimci iz fajla data/wealth.json (GitHub zadatak snima članove MU), spojeni sa onim što pamti ovaj pregledač
-let WSRV=null,DSRV=null;const USAGE_URL="https://script.google.com/macros/s/AKfycbwsqTva4P6XZG5yZCtomD2-H35mbHHwmrJZ9IOO-xAyHc37WSCFM4q_qteXikM0bZgELA/exec";
+let WSRV=null,DSRV=null,POOLD=null,_pk="",_pr=null;
+// pool loot: posle svake runde igra deli predmete po rangu štete u toj rundi. Iz uzorka poslednjih rundi (data/pool.json) računamo
+// koji predmet bi dobio sa tvojom štetom po rundi, pa to puta broj rundi koje igraš na dan
+function poolRounds(){const key=(D.equipAt||"")+"|"+JSON.stringify(ASK)+"|"+(POOLD&&POOLD.updated);if(_pr&&key===_pk)return _pr;_pk=key;
+  _pr=((POOLD&&POOLD.rounds)||[]).map(r=>r.w.map(x=>({d:x[0],v:lootVal({code:x[1],skills:x[2]})})).sort((a,b)=>b.d-a.d));return _pr}
+function poolAt(d){const R=poolRounds();if(!R.length)return null;let t=0;
+  for(const w of R){for(let i=0;i<w.length;i++){if(w[i].d<=d){t+=w[i].v;break}}}return t/R.length}
+function poolAuto(dmg){const W=D.week||{},R=W.itemsPerDay>0?W.itemsPerDay:3,v=poolAt(dmg/R);
+  return v==null?(W.poolPerDay>0?W.poolPerDay:76):v*R}const USAGE_URL="https://script.google.com/macros/s/AKfycbwsqTva4P6XZG5yZCtomD2-H35mbHHwmrJZ9IOO-xAyHc37WSCFM4q_qteXikM0bZgELA/exec";
 function wealthLoad(){const srv=(WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id]&&WSRV.players[(D.me||{}).id].h)||[],m=new Map();srv.forEach(x=>m.set(x.d,x));wealthLoad0().forEach(x=>m.set(x.d,x));return[...m.values()].sort((a,b)=>a.d<b.d?-1:1)}
 async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
   const d=new Date().toISOString().slice(0,10),L=wealthLoad0().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
   try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}
   try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}
-  try{const r=await fetch("data/damage.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)DSRV=await r.json()}catch(e){}}
+  try{const r=await fetch("data/damage.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)DSRV=await r.json()}catch(e){}
+  try{const r=await fetch("data/pool.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){POOLD=await r.json();RECK="";try{render()}catch(e){}}}catch(e){}}
 function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"";
   const sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
   const rows=Object.entries(WSRV.players).map(([id,p])=>{const h=p.h||[];if(!h.length)return null;const last=h[h.length-1],t=Date.parse(last.d)/864e5;
@@ -1430,7 +1440,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t.classList||!t.clas
 document.addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest(".ovc2[data-go]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();showTab(c.dataset.go);window.scrollTo({top:0})}});
 const ICO_=Object.fromEntries([...document.querySelectorAll(".tabs button")].map(b=>[b.dataset.tab,b.querySelector(".ic").outerHTML]));
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){showTab(g.dataset.go);window.scrollTo({top:0})}});
-{const r0=render;render=function(){r0();try{ovRender()}catch(e){}}}
+{const r0=render;render=function(){r0();try{ovRender()}catch(e){}try{if(poolIn.value==="")poolIn.placeholder="auto "+fmt(poolAuto(calc(getState()).dmg),0)}catch(e){}}}
 hardReset.addEventListener("click",()=>{if(!hardReset.dataset.arm){hardReset.dataset.arm=1;hardReset.textContent="Klikni opet da potvrdiš reset";setTimeout(()=>{delete hardReset.dataset.arm;hardReset.textContent="Resetuj kalkulator (ako se nešto zaglavi)"},4000);return}
   try{Object.keys(localStorage).filter(k=>/^(rb|vk)-/.test(k)&&k!=="vk-login").forEach(k=>localStorage.removeItem(k))}catch(e){}location.reload()});
 // VUKOVI IKONE: male ikonice ispred naslova delova
@@ -1620,16 +1630,20 @@ async function loadWeek(uid){
   W.bountyPer1k=W.dmg?(W.bounty+W.contract)/W.dmg*1000:0.05;
   // pool loot: predmeti koje si stvarno dobio u završenim bitkama ove nedelje, po tržišnoj ceni, na dan
   W.poolPerDay=S.filter(x=>ended.has(x.battle)).reduce((t,x)=>t+(x.poolLoot||[]).reduce((u,y)=>u+lootVal(y.item),0),0)/7;
+  // koliko rundi na dan igraš: svaka runda daje jedan predmet pa broj predmeta po danu pokazuje učestalost
+  {const it=S.filter(x=>ended.has(x.battle)).flatMap(x=>x.poolLoot||[]),wr=it.filter(y=>y.round);W.itemsPerDay=(wr.length||it.length)/7}
   D.week=W;D.battles=battles.slice(0,15);
-  if(W.poolPerDay>0&&!poolIn.dataset.user){poolIn.value=Math.round(W.poolPerDay);poolHint()}
+  poolHint();RECK="";
   RECK="";battleList();tables();render();
 }
 login.addEventListener("submit",e=>{e.preventDefault();KEY=ukey.value.trim();
   try{if(remember.checked)localStorage.setItem("vk-login",JSON.stringify({n:uname.value.trim(),k:KEY}));else localStorage.removeItem("vk-login")}catch(x){}
   loadUser(uname.value.trim())});
 ["firmMan","woodIn","poolIn"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{RECK="";render()}));
-poolIn.addEventListener("input",()=>{poolIn.dataset.user=1;poolHint()});
-function poolHint(){const el=document.getElementById("poolNote");if(el)el.textContent=poolIn.dataset.user?"Ručno upisano.":(D.week&&D.week.poolPerDay>0?`Izračunato iz tvojih završenih bitaka u poslednjih 7 dana (${fmt(D.week.poolPerDay)} dnevno po tržišnoj ceni dobijenih predmeta).`:"Procena.")}
+poolIn.addEventListener("input",()=>{poolHint()});
+function poolHint(){const el=document.getElementById("poolNote");if(!el)return;const W=D.week||{},n=POOLD&&POOLD.rounds?POOLD.rounds.length:0;
+  if(poolIn.value!==""){el.textContent="Ručno upisano.";return}
+  el.textContent=n?`Računa se sam: igra deli predmete po rangu štete u rundi, pa sa tvojom štetom po rundi gledamo koji predmet bi dobio u ${n} poslednjih rundi. Igraš oko ${fmt(W.itemsPerDay>0?W.itemsPerDay:3,1)} rundi dnevno (po poslednjih 7 dana).`:"Procena."}
 try{const l=JSON.parse(localStorage.getItem("vk-login"));if(l){uname.value=l.n||"";ukey.value=l.k||"";remember.checked=true;KEY=ukey.value.trim();loadUser(uname.value.trim())}}catch(e){}
 
 // etika vladajućih stranaka: samo države čiji specijalitet može da dobije +30, keširano u browseru 24h
@@ -1660,7 +1674,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="f8b0d3c6a1";
+const VKV="b0d2f5e8c3";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

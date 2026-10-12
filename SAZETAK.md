@@ -76,6 +76,7 @@ Glavni delovi:
 8. Kartica Šteta MU (po danima, bounty, uživo), satni snimak.
 9. Brojač korisnika (Google tabela, kod gotov i uključen), pločice opreme samo sa cenom i linkom Kupi ↗, broj metaka, dnevno trošenje opreme, kartica „Kad ti se napuni health" + održiv build.
 10. Pool loot iz rang lista rundi, stabilnija preporuka, ugovori u licitaciji, ažurirano Uputstvo.
+11. Provera koda (sintaksa, JSON, učitavanje stranice), uklonjena kolona „Kvalitet" (Min/Avg/Max) iz tabele opreme, prepisan README.
 
 ## 7. Nedovršeno / otvorena pitanja
 - **Brojač korisnika**: skripta je u Google nalogu, ali je potvrda da upisuje redove u list „Igrači" izostala. Verovatno treba Deploy → Manage deployments → Edit → **New version** i ponovo odobriti pristup. Provera: učitati nik na pravom sajtu i videti da li se pojavi list „Igrači" u tabeli „Kalkulator korisnici".
@@ -84,7 +85,6 @@ Glavni delovi:
 - Ugovor „samo za profesionalce" (`professionalsOnly`): pravilo igre nije poznato, kalkulator samo ispiše napomenu.
 - Pool loot model validiran na jednom nalogu (97 naspram 117 dnevno); uzorak rundi je mali (38–60). Procena dolazi iz tvojih rundi/dan koje zavise od istorije.
 - Zaokružena preporuka druge sesije može da se menja između jeftinih opcija kad se menja bounty (zanemarljiva šteta).
-- Kolona „Kvalitet" (Min/Avg/Max) postoji još u tabeli „Cene opreme i preporuka kupi ili napravi po komadu" u tabu Oprema.
 - Zarada od radnika traži API ključ (bez njega procena).
 - Mrtav kod, README je zastareo, `FALLBACK.equipment` je stari snimak od 9. 10.
 - Istorija bogatstva za igrače van MU Vukovi počinje od prvog otvaranja (samo localStorage).

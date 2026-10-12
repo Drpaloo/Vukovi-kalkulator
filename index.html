@@ -820,13 +820,13 @@ function gearWords(r){
   return`Napravi sam: ${u(craft)}. Kupi na marketu: ${u(buy)}.`+rnd;
 }
 // tabela komada iz preporuke: stat koji je računat i cena po kojoj je računat (kupovina ili izrada)
-function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v),q=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
+function gearStats(x,perQ){if(!x)return"";const P=x.st.P,f=v=>fmt(v);
   const rows=[["weapon",WCODE[x.w],x.w,rn(x.w,WNAME[x.w]),`attack ${f(P.weapon.atk)}, crit ${f(P.weapon.cc)}%`],
     ...[["helmet",`crit šteta +${f(P.helmet.v)}%`],["chest",`armor ${f(P.chest.v)}`],["pants",`armor ${f(P.pants.v)}`],["boots",`dodge ${f(P.boots.v)}`],["gloves",`precision ${f(P.gloves.v)}`]]
       .map(([sl,t])=>[sl,sl+(x.a+1),x.a,rn(x.a,SLN[sl]),t])];
   let sum=0;const tr=rows.map(([sl,code,r,name,t])=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r,p.q);if(isFinite(c))sum+=c;
-    return`<tr><td>${name}</td><td>${t}</td><td class="num">${q(p)}</td><td class="num">${fmt(c)} (${p.mine?"imaš":way(code,r,p.q)==="buy"?"kupi":"izradi"})</td></tr>`}).join("");
-  return`<table class="gst"><thead><tr><th>Komad</th><th>Stat</th><th class="num">Kvalitet</th><th class="num">Cena</th></tr></thead><tbody>${tr}<tr><td colspan="3"><strong>Ceo komplet</strong> <span class="hint">(cena novog na marketu za ono što imaš)</span></td><td class="num"><strong>${fmt(sum)}</strong></td></tr></tbody></table>`+
+    return`<tr><td>${name}</td><td>${t}</td><td class="num">${fmt(c)} (${p.mine?"imaš":way(code,r,p.q)==="buy"?"kupi":"izradi"})</td></tr>`}).join("");
+  return`<table class="gst"><thead><tr><th>Komad</th><th>Stat</th><th class="num">Cena</th></tr></thead><tbody>${tr}<tr><td colspan="2"><strong>Ceo komplet</strong> <span class="hint">(cena novog na marketu za ono što imaš)</span></td><td class="num"><strong>${fmt(sum)}</strong></td></tr></tbody></table>`+
     `<p class="hint" style="margin:4px 0 8px">Sa skilovima: attack ${f(x.st.atk)}, precision ${f(x.st.prec)}%, crit ${f(x.st.cc)}% za +${f(x.st.cd)}%, armor ${f(x.aE*100)}%, dodge ${f(x.dE*100)}%. Prosečan udarac ${f(x.Y)}.</p>`}
 // debuff od pill-a: udaraš samo koliko health-a bi se inače bacilo (regen preko pune trake), pa kad debuff istekne bar je pun
 function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)return null;
@@ -884,7 +884,7 @@ function renderDebuff(){if(!window.dbfBody)return;const s=getState();
   const top=d.L.slice(0,3);dbfTbl.innerHTML="";
   dbfDet.innerHTML=top.map((o,i)=>`<details class="det dbfOpt"${i===0?" open":""}><summary><span class="dbfN">${WNAME[o.w]} · ${SETM[o.a]} set · ${AMS[o.am]}</span><span class="dbfS">${fmt(o.x.h)} udaraca · ${fk(o.x.dmg)} · <b style="color:var(--${o.net>=0?"good":"bad"})">${sg(o.net)}</b></span></summary>`+
     `<div class="rrow"><span class="k">Oprema</span><span>${gearWords({s1:o.x})}</span></div>`+
-    `<p class="hint" style="margin:4px 0">${rn(o.w,WNAME[o.w])} · ${rn(o.a,SETM[o.a])} set · ${AMS[o.am]}. Kvalitet: Min je najslabiji komad te boje, Max najjači, Avg sredina. Slabiji je jeftiniji, pa kalkulator bira onaj sa najviše plusa za novac.</p>${gearStats(o.x)}</details>`).join("")}
+    `<p class="hint" style="margin:4px 0">${rn(o.w,WNAME[o.w])} · ${rn(o.a,SETM[o.a])} set · ${AMS[o.am]}.</p>${gearStats(o.x)}</details>`).join("")}
 function renderRec(){
   const b=bestBuild(+bonus.value);
   if(!b){recTitle.textContent="Sa ovim bonusom nijedan build nije u plusu";recSteps.innerHTML="";recLedger.innerHTML="";recDmg.textContent="0";recNet.textContent="0";recApply.hidden=true;
@@ -1694,7 +1694,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="e9a1c4b7f2";
+const VKV="3b7d05e8a1";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

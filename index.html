@@ -890,10 +890,15 @@ function renderRec(){
       `<div class="tile tx"><span class="tn">${food?"Hrana":"Bez jela"}</span><span class="tm">${food?"+"+FOODHP[food]+"%":"–"}</span><span class="ts">${food?FDS[food]+" × "+x.meals:" "}</span></div></div>`};
   window._tiles=tiles;
   const sess=(k,sub,x,am,fd)=>`<div class="sess"><div class="sh"><span class="sk">${k}</span><span class="sm">${sub}</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${tiles({...x,ammo:am},fd)}</div>`;
+  // dnevno trošenje opreme: oružje gubi 1% po udarcu, a svaki komad seta 1% po udarcu koji nisi izbegao; 100% je jedan komad
+  const wear=(()=>{const M=new Map(),add=(code,name,u,cost)=>{const o=M.get(code)||{name,u:0,c:0};o.u+=u;o.c+=u*cost;M.set(code,o)};
+    for(const x of[r.s1,r.s2].filter(Boolean)){add(WCODE[x.w],WNAME[x.w],x.wUse,x.wCost);for(const sl of SLOTS){const code=sl+(x.a+1);add(code,SLN[sl]+" · "+SETM[x.a],x.aUse,itemCost(code,x.a,x.st.P[sl].q))}}
+    const rows=[...M.values()],tot=rows.reduce((t,o)=>t+o.c,0);
+    return`<div class="ldg" style="margin:10px 0 0;grid-template-columns:1fr"><div class="cs"><h4>Dnevno trošenje opreme</h4>`+rows.map(o=>`<div class="ln"><span>${o.name}</span><span>${fmt(o.u*100)}% · ${fmt(o.u,2)} kom · ${fmt(o.c,1)}</span></div>`).join("")+`<div class="ln"><b>Ukupno dnevno</b><b>${fmt(tot,1)} coins</b></div></div></div>`})();
   recSteps.innerHTML=
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
     (r.s2?sess("Ostatak dana",`bez jela · ${QN(s.q2)} kvalitet`,r.s2,s.ammo2,null):"")+
-    `<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
+    wear+`<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
@@ -1648,7 +1653,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="d6f8b1a4e9";
+const VKV="e7a9c2b5f0";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

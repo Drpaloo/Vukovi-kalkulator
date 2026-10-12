@@ -126,7 +126,7 @@ details.adv[open]{display:grid;gap:16px}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .tile{border:1px solid currentColor;border-radius:8px;padding:6px 4px;text-align:center;display:grid;gap:1px;background:rgba(255,255,255,.03);min-width:0}
 .tile .tn{font-size:11px}.tile .tm{font-size:15px;font-weight:700;color:var(--ink,#fff);line-height:1.2}.tile .ts{font-size:10.5px;color:var(--muted);line-height:1.25}
-.tile.tx{color:var(--muted)}.tile .tm.tpr{color:var(--brass)}
+.tile.tx{color:var(--muted)}.tile .tbuy{color:inherit;text-decoration:underline;text-underline-offset:3px;font-weight:700}.tile .tm.tpr{color:var(--brass)}
 /* Pregled: kompaktne kartice */
 #ovGrid.ovg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ovc2{cursor:pointer;gap:4px}.ovc.wide{grid-column:1/-1}
 .ovc2 h3{justify-content:flex-start}.ovc2 .arr{margin-left:auto;color:var(--muted)}
@@ -569,6 +569,7 @@ let D={...FALLBACK,week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bounty
 let BASE={attack:325,precision:80,cc:40,cd:240,armor:18,dodge:20,health:120,hunger:6,loot:15,rank:23};
 const API="https://api2.warera.io/trpc/";let KEY="",CUR=null;
 const RAR=["Siva","Zelena","Plava","Ljubičasta","Žuta","Crvena"];
+const MKT=c=>`https://app.warera.io/market/equipments?item=${c}`;
 const WCODE=["knife","gun","rifle","sniper","tank","jet"], WNAME=["Nož","Pištolj","Puška","Snajper","Tank","Avion"];
 const WR=[[[21,40],[1,5]],[[51,60],[6,10]],[[71,90],[11,15]],[[101,130],[16,20]],[[141,170],[26,35]],[[221,300],[41,50]]];
 const HR=[[1,15],[16,30],[31,50],[71,90],[91,110],[121,150]];
@@ -890,7 +891,7 @@ function renderRec(){
   // oprema kao pločice: komad, glavni stat, kvalitet i cena
   const tiles=(x,food)=>{const P=x.st.P,f=v=>fmt(v),qn=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
     const pc=(sl,code,r2,name,stat)=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r2,p.q),wy=p.mine?"imaš":way(code,r2,p.q)==="buy"?"kupi":"izradi";
-      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr">${fmt(c,c<100?1:0)}</span><span class="ts">${wy}</span></div>`};
+      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr">${fmt(c,c<100?1:0)}</span><span class="ts">${wy==="kupi"?`<a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a>`:wy}</span></div>`};
     return`<div class="tiles">`+pc("weapon",WCODE[x.w],x.w,WNAME[x.w],`${f(P.weapon.atk)} / ${f(P.weapon.cc)}%`)+
       pc("helmet","helmet"+(x.a+1),x.a,"Šlem",`+${f(P.helmet.v)}%`)+pc("chest","chest"+(x.a+1),x.a,"Grudi",f(P.chest.v))+pc("pants","pants"+(x.a+1),x.a,"Pant.",f(P.pants.v))+
       pc("boots","boots"+(x.a+1),x.a,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.a+1),x.a,"Ruk.",f(P.gloves.v))+
@@ -1021,7 +1022,7 @@ function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
   priceNote.textContent=(D.keyless?(D.equipAt?`Cene opreme su iz dnevnog snimka (osvežava se na 6 sati), poslednji put ${new Date(D.equipAt).toLocaleString("sr-Latn",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"})}. `:"Cene opreme su snimak od 9. oktobra. "):"")+`Sivi broj je medijana poslednjih 40 prodaja, a ponude na marketu su obično skuplje (javni podaci ih ne daju). Upiši cenu koju vidiš na marketu u polje komada (isprazni polje za automatsku) i račun ide po njoj. Izrada tačnog komada = scraps po prodajnoj ceni ${m.scraps.bid.toFixed(3)} + duplo steel-a po ${m.steel.ask.toFixed(3)}. Ispod cene piše šta se isplati za taj komad.`;
   // kartica po boji: oružje i pet komada, sa cenom na marketu i preporukom (jeftinije između kupovine i izrade)
-  const pc=(name,code,r)=>{const mk=buy(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=buy(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}"><span class="chip ${b==="buy"?"g":"b"}">${b==="buy"?"Kupi":"Napravi"}</span></div>`};
+  const pc=(name,code,r)=>{const mk=buy(code),b=bestWay(code,r),set=ASK[code]>0,auto=(()=>{const a=ASK[code];delete ASK[code];const v=buy(code);if(a>0)ASK[code]=a;return v})();return`<div class="pcell"><span class="pn">${name}</span><input class="pin${set?" on":""}" type="text" inputmode="decimal" data-code="${code}" value="${set?String(ASK[code]).replace(".",","):""}" placeholder="${fmt(auto,1)}" aria-label="Cena ponude, ${name}">${b==="buy"?`<a class="chip g" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri" style="text-decoration:none">Kupi ↗</a>`:`<span class="chip b">Napravi</span>`}</div>`};
   tPrice.innerHTML=RAR.map((n,r)=>`<div class="pcard"><div class="ph"><b>${rn(r,n)}</b><span>izrada ${fmt(craftCost(r),1)}</span></div><div class="pg">${pc("Oružje",WCODE[r],r)}${SLOTS.map(x=>pc(SLN[x],x+(r+1),r)).join("")}</div></div>`).join("");
   craftPanel();casePanel();skInit();
   if(D.firms.length){
@@ -1685,7 +1686,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="e3a5c8b1f6";
+const VKV="f4b6d9c2a7";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

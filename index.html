@@ -1369,7 +1369,7 @@ function poolRounds(){const key=(D.equipAt||"")+"|"+JSON.stringify(ASK)+"|"+(POO
 function poolAt(d){const R=poolRounds();if(!R.length)return null;let t=0;
   for(const w of R){for(let i=0;i<w.length;i++){if(w[i].d<=d){t+=w[i].v;break}}}return t/R.length}
 function poolAuto(dmg){const W=D.week||{},R=W.itemsPerDay>0?W.itemsPerDay:3,v=poolAt(dmg/R);
-  return v==null?(W.poolPerDay>0?W.poolPerDay:76):v*R}const USAGE_URL="https://script.google.com/macros/s/AKfycbwsqTva4P6XZG5yZCtomD2-H35mbHHwmrJZ9IOO-xAyHc37WSCFM4q_qteXikM0bZgELA/exec";
+  return v==null?(W.poolPerDay>0?W.poolPerDay:76):v*R}
 function wealthLoad(){const srv=(WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id]&&WSRV.players[(D.me||{}).id].h)||[],m=new Map();srv.forEach(x=>m.set(x.d,x));wealthLoad0().forEach(x=>m.set(x.d,x));return[...m.values()].sort((a,b)=>a.d<b.d?-1:1)}
 async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
   const d=new Date().toISOString().slice(0,10),L=wealthLoad0().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
@@ -1579,8 +1579,6 @@ async function loadUser(name){
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     // sveže cene opreme iz dnevnog snimka (GitHub zadatak), da svaki igrač dobije aktuelne cene i bez ključa
     try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
-    // brojač upotrebe: samo nik, vidi worker/brojac.gs; prazna adresa znači da je isključen
-    try{if(USAGE_URL&&!/^(localhost|127\.)/.test(location.hostname)&&user.username)fetch(USAGE_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({n:user.username}),keepalive:true}).catch(()=>{})}catch(e){}
     wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),
@@ -1692,7 +1690,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="7c2e91d4b0";
+const VKV="a41f68c2d9";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

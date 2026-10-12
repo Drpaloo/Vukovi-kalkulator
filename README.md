@@ -11,5 +11,4 @@ API ključ nije obavezan (treba samo za zaradu od radnika). Ako ga upišeš, ost
 - `data/`: `equipment.json` (cene opreme), `wealth.json` (bogatstvo članova MU), `damage.json` (šteta i bounty), `pool.json` (uzorak rundi za pool loot)
 - `scripts/`: Node 20 skripte za snimke podataka, bez zavisnosti
 - `.github/workflows/`: zakazani zadaci koji pokreću skripte (bogatstvo dnevno, oprema na 6 h, šteta i pool svakog sata)
-- `worker/brojac.gs`: Google Apps Script za brojač korisnika
 - `SAZETAK.md`: detaljan opis logike, izvora podataka i otvorenih pitanja

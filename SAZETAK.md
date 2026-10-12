@@ -16,7 +16,6 @@ Kalkulator ratnog budžeta za igru WarEra (MU Vukovi). Igrač upiše ime iz igre
 | `data/pool.json` | Uzorak 38–60 poslednjih rundi: šteta → predmet (za pool loot), satni snimak |
 | `scripts/*.mjs` | `wealth-snapshot`, `equipment-snapshot`, `damage-snapshot`, `pool-snapshot` (Node 20, bez zavisnosti) |
 | `.github/workflows/` | `wealth.yml` (dnevno 23:40 UTC), `equipment.yml` (svakih 6 h, treba secret `WARERA_API_KEY`), `damage.yml` (svakog sata u :07, pokreće damage + pool snimak) |
-| `worker/brojac.gs` | Google Apps Script za brojač korisnika (upisuje nikove u privatnu Google tabelu) |
 | `README.md` | Kratak opis (zastareo, ne pominje nove funkcije) |
 
 ## 3. Struktura `index.html`
@@ -74,12 +73,11 @@ Glavni delovi:
 6. Poređenje sa SPYWarera Combat optimizatorom, praćenje bogatstva (localStorage + dnevni GitHub snimak za MU Vukovi).
 7. Učitavanje bitaka/lootа/ugovora bez ključa; dnevni snimak cena opreme (GitHub zadatak, secret `WARERA_API_KEY` je postavljen).
 8. Kartica Šteta MU (po danima, bounty, uživo), satni snimak.
-9. Brojač korisnika (Google tabela, kod gotov i uključen), pločice opreme samo sa cenom i linkom Kupi ↗, broj metaka, dnevno trošenje opreme, kartica „Kad ti se napuni health" + održiv build.
+9. pločice opreme samo sa cenom i linkom Kupi ↗, broj metaka, dnevno trošenje opreme, kartica „Kad ti se napuni health" + održiv build.
 10. Pool loot iz rang lista rundi, stabilnija preporuka, ugovori u licitaciji, ažurirano Uputstvo.
 11. Provera koda (sintaksa, JSON, učitavanje stranice), uklonjena kolona „Kvalitet" (Min/Avg/Max) iz tabele opreme, prepisan README.
 
 ## 7. Nedovršeno / otvorena pitanja
-- **Brojač korisnika**: skripta je u Google nalogu, ali je potvrda da upisuje redove u list „Igrači" izostala. Verovatno treba Deploy → Manage deployments → Edit → **New version** i ponovo odobriti pristup. Provera: učitati nik na pravom sajtu i videti da li se pojavi list „Igrači" u tabeli „Kalkulator korisnici".
 - **Bonus saveza**: kalkulator daje 17,39 za ATLAS (K0ld ukupno 82,39), igrač je pomenuo 82,7. Treba slika „Bonus damages" iz igre da se potvrdi formula saveza.
 - **Cene ponuda na marketu** ne mogu da se čitaju automatski (zatvoreno za API ključ). Ostaje procena iz prodaja + ručno polje. Link „Kupi ↗" nije proveren na prijavljenom nalogu (parametar `?item=`).
 - Ugovor „samo za profesionalce" (`professionalsOnly`): pravilo igre nije poznato, kalkulator samo ispiše napomenu.

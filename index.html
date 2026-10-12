@@ -1119,7 +1119,6 @@ function skInit(){const L=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.fre
 function withSk(L,f){const old={...BASE};SKK.forEach(k=>BASE[k]=skVal(k,L[k]));try{return f()}finally{Object.assign(BASE,old);RECK=""}}
 // skilovi ostaju bar 7 dana, pa predlog mora da važi za više bitaka: slaba, srednja, jaka i ova koju si izabrao
 const SKB=()=>[...new Set([40,70,100,+bonus.value])].sort((a,b)=>a-b);
-function skEval(L,B){return withSk(L,()=>B.map(x=>{const b=bestBuild(x);return b?b.r.dmg:0}))}
 const minGain=(d,d0)=>Math.min(...d.map((x,i)=>d0[i]>0?x/d0[i]:1));
 // temeljno traženje: borbeni i eko skilovi zajedno, oprema se bira za svaki raspored, build mora da ostavi bar „najmanji plus“
 // potez = jedan nivo iz skila u skil (ili iz slobodnih poena); prvo brzi izbor najjačih poteza, pa pun pregled svih poteza pre kraja
@@ -1629,7 +1628,6 @@ async function loadUser(name){
   }catch(e){err.textContent=e.message||"Nešto nije u redu sa učitavanjem.";liveTag.className="live off";liveTag.textContent="Nije učitano"}
   finally{loadBtn.disabled=false}
 }
-function applyChecksIfNew(sc){if(!sc)applyChecks()}
 async function loadWeek(uid){
   const since=new Date(Date.now()-7*864e5).toISOString();let ids=[];const ended=new Set();
   try{for(const a of[true,false]){let cur=null;for(let i=0;i<10;i++){const inp={isActive:a,limit:100};if(cur)inp.cursor=cur;const d=await api("battle.getBattles",inp);
@@ -1694,7 +1692,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="3b7d05e8a1";
+const VKV="7c2e91d4b0";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

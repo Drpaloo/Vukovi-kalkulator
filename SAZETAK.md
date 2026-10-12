@@ -50,6 +50,8 @@ Glavni delovi:
 **Preporuka** (`bestBuild0`): za pill da/ne pretraži oružje × set × municija × hrana × kvalitet za glavnu i drugu sesiju odvojeno, uslov saldo ≥ `NETMIN` (0), najveća šteta; među svim buildovima do 1,5% ispod najbolje bira onaj sa najviše plusa (stabilnost, rešava „tenk i plavi" skakanje). `tuneQ` posle bira kvalitet po komadu.
 **Prihod u saldu**: firme (API) + rad + case-ovi iz pogođenih udaraca + wooden case + **pool loot** + scraps + bounty/ugovor.
 **Pool loot**: igra posle svake runde deli predmete po rangu štete u rundi (88% učesnika dobije predmet, bolji rang bolji predmet). Model: uzorak rundi iz `data/pool.json` → za štetu po rundi (dnevna šteta / broj rundi dnevno iz tvojih poslednjih 7 dana) uzme predmet za taj rang, vrednuje ga po tržišnoj ceni (min. vrednost rastavljanja), prosek preko rundi × rundi na dan. Polje „Pool loot dnevno" prazno = auto. Provereno: 97/dan modela naspram 117 stvarno.
+**Osvežavanje ugovora i bounty-ja**: izabrana bitka se ponovo čita svakih 5 min i kad se vratiš na stranicu, osim dok kucaš u neko polje (`refreshBattleLive`). Kad bitka završi, ugovor i bounty idu na 0. Ručno upisan bounty se pri osvežavanju prepisuje.
+
 **Ugovor i bounty**: ugovor ima prioritet nad bounty-jem. Čita se `mercenaryContractAuction.getPaginatedAuctions` (status `won` i `active`). Popunjenost = zbir `totalMoneyFromContract` članova MU iz `battleLootSummary` (bez ključa), troši se redom dobijanja. Ugovor u licitaciji se računa ako MU vodi ponudu.
 **Bonus bitke** (`checkDefs`): patriot +20, naredba države i MU (high 15 / low 5, čita se iz `battleOrder`), MU štab nivo×5, bunker (odbrana), vojna baza (napad, pola ako si saveznik), savez (+20 do 10% udela razvoja sveta, minus 4 po procentu preko), saveznik +10 (kad nije član saveza), zakleti neprijatelj +10, minusi (−50 drži region, −25 izgubljen region). Server igre (`battle.getDamageBonuses`) ne daje ove brojeve ni API ključu.
 **Preliv posle pill-a**: kad health istekne debuff, udaraš samo ono što bi se bacilo preko pune trake; tri ponuđena seta u padajućim menijima.
@@ -80,7 +82,7 @@ Glavni delovi:
 ## 7. Nedovršeno / otvorena pitanja
 - **Bonus saveza**: kalkulator daje 17,39 za ATLAS (K0ld ukupno 82,39), igrač je pomenuo 82,7. Treba slika „Bonus damages" iz igre da se potvrdi formula saveza.
 - **Cene ponuda na marketu** ne mogu da se čitaju automatski (zatvoreno za API ključ). Ostaje procena iz prodaja + ručno polje. Link „Kupi ↗" nije proveren na prijavljenom nalogu (parametar `?item=`).
-- Ugovor „samo za profesionalce" (`professionalsOnly`): pravilo igre nije poznato, kalkulator samo ispiše napomenu.
+- Ugovor „samo za profesionalce" (`professionalsOnly`): znamo samo da ugovor MU-u dodeljuje država (aukcija), da je jedini ugovor u igri i da se računa umesto bounty-ja, ne uz njega. Šta tačno znači „samo za profesionalce" nije poznato, kalkulator samo ispiše napomenu.
 - Pool loot model validiran na jednom nalogu (97 naspram 117 dnevno); uzorak rundi je mali (38–60). Procena dolazi iz tvojih rundi/dan koje zavise od istorije.
 - Zaokružena preporuka druge sesije može da se menja između jeftinih opcija kad se menja bounty (zanemarljiva šteta).
 - Zarada od radnika traži API ključ (bez njega procena).

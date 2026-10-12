@@ -1367,6 +1367,7 @@ async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId
   try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}
   try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}
   try{const r=await fetch("data/damage.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)DSRV=await r.json()}catch(e){}
+  dmgLive();if(!window._dl)window._dl=setInterval(dmgLive,6e5);
   try{const r=await fetch("data/pool.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){POOLD=await r.json();RECK="";try{render()}catch(e){}}}catch(e){}}
 function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"";
   const sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
@@ -1376,6 +1377,12 @@ function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"
   const tr=rows.map((r,i)=>`<tr${r.me?' class="cur"':""}><td>${i+1}</td><td>${r.n}</td><td class="n">${fmt(r.t,0)}</td><td class="n" style="color:var(--${r.g==null?"muted":r.g>=0?"good":"bad"})">${r.g==null?"–":sign(r.g)}</td></tr>`).join("");
   return`<section class="ovc wide"><h3>${ICO_.ekonomija||""}Bogatstvo MU ${D.me.muName||""}</h3><div class="ovn3"><div><div class="bn">${fmt(tot,0)}</div><div class="bl">ukupno, ${rows.length} članova</div></div><div><div class="bn" style="color:var(--${tg>=0?"good":"bad"})">${sign(tg)}</div><div class="bl">rast / dan (7 d)</div></div><div><div class="bn">${fmt(tot/rows.length,0)}</div><div class="bl">prosek po članu</div></div></div>`+
     `<details class="det"><summary>Svi članovi</summary><div class="tbl-wrap"><table class="t"><tr><th>#</th><th>Igrač</th><th class="n">Ukupna vrednost</th><th class="n">Rast / dan</th></tr>${tr}</table></div><p class="hint" style="margin:6px 0 0">Podaci se snimaju jednom dnevno. Rast je prosek za poslednjih 7 dana. Menja ga i cena na marketu i vrednost firmi.</p></details></section>`}
+// uživo: satni snimak je osnova, a pri otvaranju (i na 10 minuta dok je stranica otvorena) čitamo trenutne zbirove članova i dodajemo razliku u današnji dan
+async function dmgLive(){if(!DSRV||(D.me||{}).mu!==DSRV.mu||document.hidden)return;if(Date.now()-(DSRV._lt||0)<3e5)return;DSRV._lt=Date.now();
+  const day=new Date().toISOString().slice(0,10),ids=Object.keys(DSRV.players);
+  await pool(ids,4,async id=>{try{const u=await api("user.getUserById",{userId:id}),R=u.rankings||{},A=R.userDamages&&R.userDamages.value,B=R.userBounty&&R.userBounty.value,p=DSRV.players[id];if(!(A>=0)||!(B>=0))return;
+    if(p.a!=null&&A>=p.a){p.d[day]=(p.d[day]||0)+(A-p.a);p.b[day]=+((p.b[day]||0)+Math.max(0,B-(p.bt||0))).toFixed(3)}p.a=A;p.bt=B}catch(e){}});
+  try{ovRender()}catch(e){}}
 // šteta i bounty cele jedinice po danima (data/damage.json), nedelja ide od ponedeljka do nedelje po UTC
 function muDamageCard(){if(!DSRV||!DSRV.players||(D.me||{}).mu!==DSRV.mu)return"";
   const dm={},bt={};Object.values(DSRV.players).forEach(p=>{Object.entries(p.d||{}).forEach(([k,v])=>dm[k]=(dm[k]||0)+v);Object.entries(p.b||{}).forEach(([k,v])=>bt[k]=(bt[k]||0)+v)});
@@ -1389,7 +1396,7 @@ function muDamageCard(){if(!DSRV||!DSRV.players||(D.me||{}).mu!==DSRV.mu)return"
   return`<section class="ovc wide"><h3>${ICO_.danas||""}Šteta MU ${D.me.muName||""}</h3><div class="ovn3"><div><div class="bn">${M(sum(wv))}</div><div class="bl">šteta ove nedelje</div></div><div><div class="bn">${M(ukD)}</div><div class="bl">šteta ukupno</div></div><div><div class="bn">${M(dm[best])}</div><div class="bl">najbolji dan, ${dt(best)}</div></div></div>`+
     `<div class="dg">${cells}</div><p class="hint" style="margin:4px 0 8px">Prosek poslednjih ${L30.length} dana: <b>${M(avg)}</b> dnevno</p>`+
     `<div class="ovn3"><div><div class="bn" style="color:var(--brass)">${fmt(wB,0)}</div><div class="bl">bounty ove nedelje</div></div><div><div class="bn" style="color:var(--brass)">${fmt(ukB,0)}</div><div class="bl">bounty ukupno</div></div><div><div class="bn" style="color:var(--brass)">${fmt(bt[bb]||0,0)}</div><div class="bl">najbolji dan, ${dt(bb)}</div></div></div>`+
-    `<p class="hint" style="margin:8px 0 0">Zbir svih ${Object.keys(DSRV.players).length} trenutnih članova. „Ukupno" je od početka igre, a „najbolji dan" iz poslednjih ${ks.length} dana. Osvežava se svakog sata.</p></section>`}
+    `<p class="hint" style="margin:8px 0 0">Zbir svih ${Object.keys(DSRV.players).length} trenutnih članova. „Ukupno" je od početka igre, a „najbolji dan" iz poslednjih ${ks.length} dana. Snimak je satni, a pri otvaranju se dodaje i trenutno stanje (na 10 minuta dok je stranica otvorena).</p></section>`}
 function wealthCard(){const L=wealthLoad();if(!L.length)return"";const last=L[L.length-1],t=Date.parse(last.d)/864e5;
   const ref=L.find(x=>t-Date.parse(x.d)/864e5<=7)||L[0],days=Math.round(t-Date.parse(ref.d)/864e5);
   let pred=null;try{pred=calc(getState()).net}catch(e){}
@@ -1674,7 +1681,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="b0d2f5e8c3";
+const VKV="c1e3a6f9d4";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

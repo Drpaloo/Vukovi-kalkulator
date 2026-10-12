@@ -777,7 +777,7 @@ function bestBuild0(bonus,bpo){
   const cs=getState(),QS=hasFit()?[0,50,100]:[cs.q1],QS2=hasFit()?[0,50,100]:[cs.q2];
   const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+mine.checked+"|"+getState().q1+"|"+getState().q2+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey()+"|"+NETMIN;if(key===RECK)return RECB;
   // pill menja i glavnu sesiju (+60%) i drugu (−60% debuff), pa se svaka varijanta traži posebno
-  let best=null;for(const pill of["yes","no"]){const base={...REC,bonus,bp:bpv,pill,mine:mine.checked?"yes":"no"};
+  let best=null;const cands=[];for(const pill of["yes","no"]){const base={...REC,bonus,bp:bpv,pill,mine:mine.checked?"yes":"no"};
   // saldo i šteta se sabiraju po sesijama, pa glavnu i drugu sesiju tražimo odvojeno i spajamo
   const M=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
     const st={...base,s2:"no",weap:String(w),armor:String(a),ammo,food,q1:q},r=calc(st);M.push({st,dmg:r.dmg,net:r.net})}
@@ -785,9 +785,17 @@ function bestBuild0(bonus,bpo){
   const S2=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const m of["none","light","ammo"])for(const q of QS2){if(!okA(w,m))continue;
     const o={weap2:String(w),armor2:String(a),ammo2:m,q2:q},r=calc({...base,s2:"yes",weap:"0",armor:"0",ammo:"none",food:"bread",q1:0,...o});
     S2.push({o,dd:r.dmg-z.dmg,dn:r.net-z.net})}
-  for(const x of M)for(const y of S2){const n=x.net+y.dn;if(n>=NETMIN){const d=x.dmg+y.dd;if(!best||d>best.d)best={d,st:{...x.st,s2:"yes",...y.o}}}}}
+  // preporuka stoji na granici „u plusu“, pa bi sitna promena cene, bonusa ili bounty-ja prebacivala između skoro istih buildova (pun ljubičasti, pa tank i plavi…).
+  // zato: nađi najveću štetu, pa među svim buildovima koji su joj blizu (manje od 1,5% razlike) uzmi onaj sa najviše plusa, što je stabilniji izbor
+  let bd=0;for(const x of M)for(const y of S2){if(x.net+y.dn>=NETMIN){const d=x.dmg+y.dd;if(d>bd)bd=d}}
+  if(bd>0){let bn=-Infinity,c=null;
+    for(const x of M)for(const y of S2){const n=x.net+y.dn;if(n<NETMIN)continue;const d=x.dmg+y.dd;
+      if(d>=bd*0.985&&(n>bn+1e-9||(Math.abs(n-bn)<=1e-9&&c&&d>c.d))){bn=n;c={d,n,bd,st:{...x.st,s2:"yes",...y.o}}}}
+    cands.push(c)}}
+  if(cands.length){const BD=Math.max(...cands.map(c=>c.bd)),ok=cands.filter(c=>c.d>=BD*0.985);best=ok.reduce((a,c)=>c.n>a.n?c:a)}
   if(best&&hasFit())best.st=tuneQ(best.st);
-  const res=best?{s:best.st,r:calc(best.st)}:null;RECK=key;RECB=res;return res;
+  const res=best?{s:best.st,r:calc(best.st)}:null;
+  RECK=key;RECB=res;return res;
 }
 // kvalitet po komadu: za svaki komad probaj 0-100% i zadrži onaj koji daje najviše štete uz saldo u plusu
 const QSTEP=[0,.25,.5,.75,1],QSL=["weapon",...SLOTS];
@@ -1686,7 +1694,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="a5c7e0d3b8";
+const VKV="c7e9a2f5d0";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

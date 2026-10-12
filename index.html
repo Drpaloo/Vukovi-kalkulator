@@ -289,11 +289,11 @@ tr.cur td{background:var(--brass-soft)}
       <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u browseru. „Promeni igrača" vraća na prijavu.</li>
       <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
       <h3>2. Tabovi (donja traka)</h3>
-      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, bogatstvo, šteta i bounty jedinice po danima (za članove MU Vukovi), skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li><li><b>Bogatstvo:</b> grafikon ukupne vrednosti i stvaran rast na dan naspram predviđenog salda. Za članove MU Vukovi istorija od 30 dana je već unutra, a snima se jednom dnevno (GitHub zadatak). Za ostale igrače istorija počinje od prvog otvaranja i čuva se samo u ovom browseru. Ispod je i kartica sa bogatstvom svih članova MU.</li>
+      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, bogatstvo, šteta i bounty jedinice po danima (za članove MU Vukovi), skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li><li><b>Bogatstvo (kartica u Pregledu):</b> grafikon ukupne vrednosti i stvaran rast na dan naspram predviđenog salda. Za članove MU Vukovi istorija od 30 dana je već unutra, a snima se jednom dnevno (GitHub zadatak). Za ostale igrače istorija počinje od prvog otvaranja i čuva se samo u ovom browseru. Ispod je i kartica sa bogatstvom svih članova MU.</li>
       <li><b>Danas:</b> bitka koju biješ, preporuka builda, kad ti se napuni health, preliv posle pill-a, „Probaj svoj build".</li>
-      <li><b>Oprema:</b> cene opreme (možeš da upišeš cenu sa marketa u polje komada), izrada, case-ovi, poređenje boja oružja i seta.</li>
+      <li><b>Oprema i market:</b> cene opreme (možeš da upišeš cenu sa marketa u polje komada), izrada, case-ovi, poređenje boja oružja i seta.</li>
       <li><b>Skilovi:</b> raspored skilova, predlog najboljeg rasporeda, plan.</li>
-      <li><b>Firme:</b> šta da proizvode tvoje firme.</li></ul>
+      <li><b>Ekonomija:</b> šta da proizvode tvoje firme.</li></ul>
       <h3>3. Danas: kako da izabereš bitku</h3>
       <ul><li>Nalepi link bitke iz igre i klikni „Učitaj", ili izaberi bitku sa naredbom iz liste.</li>
       <li>Izaberi stranu (napad ili odbrana).</li>
@@ -1694,7 +1694,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="d8f0b3a6e1";
+const VKV="e9a1c4b7f2";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

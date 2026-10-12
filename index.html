@@ -744,7 +744,7 @@ function gear(r){
   const rows=Object.entries(use).map(([code,u])=>{const mk=buy(code,u.qq),c=craftCost(u.r),w=way(code,u.r,u.qq),best=bestWay(code,u.r,u.qq);
     if(w==="craft"){sNeed+=u.q*CRAFT[u.r];stNeed+=u.q*2*STEEL[u.r]}
     save+=u.q*Math.abs(mk-c);
-    return`<tr><td>${u.n}</td><td class="n">${fmt(u.q,2)}</td><td class="n">${fmt(mk,1)}</td><td class="n">${fmt(c,1)}</td><td><span class="chip ${w==="craft"?"b":"g"}">${w==="craft"?"Napravi":"Kupi"}</span>${w!==best?' <span class="hint">(ručno)</span>':""}</td></tr>`}).join("");
+    return`<tr><td>${u.n}</td><td class="n">${fmt(u.q,2)}</td><td class="n">${fmt(mk,1)}</td><td class="n">${fmt(c,1)}</td><td>${w==="craft"?`<span class="chip b">Napravi</span>`:`<a class="chip g" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri" style="text-decoration:none">Kupi ↗</a>`}${w!==best?' <span class="hint">(ručno)</span>':""}</td></tr>`}).join("");
   tGear.innerHTML=`<tr><th>Komad</th><th class="n">Dnevno</th><th class="n">Market</th><th class="n">Izrada</th><th></th></tr>`+rows;
   gearNote.textContent=`Izrada tačno tog komada: scraps po ceni po kojoj bi ih prodao (${m.scraps.bid.toFixed(3)}) plus duplo steel-a (${m.steel.ask.toFixed(3)}). Preporuka bira jeftinije za svaki komad.`;
   const sGet=[r.s1,r.s2].filter(Boolean).reduce((t,x)=>t+x.wUse*Math.floor(CRAFT[x.w]/3)+x.aUse*5*Math.floor(CRAFT[x.a]/3),0);
@@ -1694,7 +1694,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="c7e9a2f5d0";
+const VKV="d8f0b3a6e1";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

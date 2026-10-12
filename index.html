@@ -289,9 +289,9 @@ tr.cur td{background:var(--brass-soft)}
       <li>„Zapamti me na ovom uređaju" čuva ime (i ključ) u browseru. „Promeni igrača" vraća na prijavu.</li>
       <li>Kalkulator sam povlači tvoje skilove, opremu koju nosiš, firme, cene i bitke.</li></ul>
       <h3>2. Tabovi (donja traka)</h3>
-      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, bogatstvo, skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li><li><b>Bogatstvo:</b> grafikon ukupne vrednosti i stvaran rast na dan naspram predviđenog salda. Za članove MU Vukovi istorija od 30 dana je već unutra, a snima se jednom dnevno (GitHub zadatak). Za ostale igrače istorija počinje od prvog otvaranja i čuva se samo u ovom browseru. Ispod je i kartica sa bogatstvom svih članova MU.</li>
-      <li><b>Danas:</b> bitka koju biješ, preporuka builda, preliv posle pill-a, „Probaj svoj build".</li>
-      <li><b>Oprema:</b> cene opreme, izrada, case-ovi, poređenje boja oružja i seta.</li>
+      <ul><li><b>Pregled:</b> kratak rezime. Build za danas, bogatstvo, šteta i bounty jedinice po danima (za članove MU Vukovi), skilovi i slobodni poeni, firme, bitke za 7 dana i koliko fali do prestiža.</li><li><b>Bogatstvo:</b> grafikon ukupne vrednosti i stvaran rast na dan naspram predviđenog salda. Za članove MU Vukovi istorija od 30 dana je već unutra, a snima se jednom dnevno (GitHub zadatak). Za ostale igrače istorija počinje od prvog otvaranja i čuva se samo u ovom browseru. Ispod je i kartica sa bogatstvom svih članova MU.</li>
+      <li><b>Danas:</b> bitka koju biješ, preporuka builda, kad ti se napuni health, preliv posle pill-a, „Probaj svoj build".</li>
+      <li><b>Oprema:</b> cene opreme (možeš da upišeš cenu sa marketa u polje komada), izrada, case-ovi, poređenje boja oružja i seta.</li>
       <li><b>Skilovi:</b> raspored skilova, predlog najboljeg rasporeda, plan.</li>
       <li><b>Firme:</b> šta da proizvode tvoje firme.</li></ul>
       <h3>3. Danas: kako da izabereš bitku</h3>
@@ -299,11 +299,17 @@ tr.cur td{background:var(--brass-soft)}
       <li>Izaberi stranu (napad ili odbrana).</li>
       <li>Bonus bitke se računa sam iz igre: patriot, naredba države i MU, MU štab, bunker, baza, saveznik, zakleti neprijatelj i minusi.</li>
       <li>Bonus naredbe se čita iz igre (visok prioritet 15%, nizak 5%).</li>
-      <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se zna samo sa API ključem.</li></ul>
+      <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se računa sama iz isplata članova tvog MU-a, bez ključa.</li></ul>
       <h3>4. Preporuka</h3>
       <ul><li>Pokazuje build sa najvećom štetom koji te ostavlja u plusu, za izabranu bitku.</li>
       <li>Glavna sesija (8h, pill na početku) i ostatak dana. Za svaki komad piše samo cena: najviše što vredi platiti za njega, i da li da ga kupiš, napraviš ili već imaš. Cena je iz cena po kojima se komadi prodaju i osvežava se na 6 sati, jer ponude na marketu ne mogu da se vide uživo, pa je to procena.</li>
+      <li>Pločica municije pokazuje i koliko metaka treba za tu sesiju (jedan metak po udarcu).</li>
+      <li>Ispod sesija je „Dnevno trošenje opreme": za svaki komad procenat trajnosti, koliko komada to znači i koliko košta. Oružje gubi 1% po udarcu, a komad seta 1% po udarcu koji nisi izbegao.</li>
       <li>„Primeni preporuku u kalkulator" prebacuje build u „Probaj svoj build".</li></ul>
+      <h3>4a. Kad ti se napuni health</h3>
+      <ul><li>Piše kad će ti health biti pun (health stiže u celim tickovima na početku svakog punog sata) i koliko propada ako ne pucaš dok spavaš.</li>
+      <li>U polju „Spavam / nisam u igri" izaberi koliko sati te nema. Kartica kaže koliko health-a da potrošiš pre toga, i koliko je to udaraca.</li>
+      <li>Ispod je „Održiv build bez pill-a": troši samo ono što ti regen i hrana vrate za dan, na tvojim trenutnim skilovima, uz što više štete a da saldo ostane u plusu.</li></ul>
       <h3>5. Preliv posle pill-a</h3>
       <ul><li>Kad si u debuffu, igra ti daje health u tickovima svakog punog sata.</li>
       <li>Preliv je health koji bi se inače bacio preko pune trake. Toliko je besplatno za udarce.</li>
@@ -323,6 +329,7 @@ tr.cur td{background:var(--brass-soft)}
       <h3>9. Poruke koje treba znati</h3>
       <ul><li>Armor radi u stepenicama: višak iznad praga stepenice ne donosi ništa, pa gledaj levi broj u tabeli stepenica.</li>
       <li>Procene prihoda (case-ovi, bounty) zavise od tržišta u tom trenutku.</li>
+      <li>Cene opreme su iz cena po kojima su se komadi prodavali, a ponude na marketu su obično malo skuplje. Zato je broj na komadu procena, a tačnu cenu možeš da upišeš ručno u Opremi.</li>
       <li>Ako se nešto zaglavi, na dnu stranice je „Resetuj kalkulator".</li></ul>
     </div>
   </section>
@@ -1653,7 +1660,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="e7a9c2b5f0";
+const VKV="f8b0d3c6a1";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

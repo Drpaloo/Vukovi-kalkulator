@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "updated": "2026-10-12",
+  "statuses": {
+    "fetched": "preuzeto direktno iz zvaničnog API-ja, nije dodatno upoređeno",
+    "confirmed_in_game": "potvrđeno na ekranu igre (screenshot korisnika)",
+    "inferred": "izvedeno iz više posmatranja, nije izričito potvrđeno",
+    "unverified": "pročitano, ali nije provereno prema API-ju ili igri",
+    "needs_check": "izvori se ne slažu, treba proveriti",
+    "unavailable": "stranica nije mogla da se učita",
+    "not_checked": "nije otvoreno"
+  },
+  "sources": [
+    {"id": "api-docs", "url": "https://api2.warera.io/docs/", "type": "official", "checked": "2026-10-12", "status": "fetched", "note": "WarEra API 0.17.4-beta. Ne opisuje strukturu odgovora. tradingOrder.getTopOrders je naveden, ali nije testiran."},
+    {"id": "api-docs-community", "url": "https://majimawrks.github.io/warera-api-docs/", "type": "community", "checked": "2026-10-12", "status": "unverified", "note": "Nezvanična dokumentacija, može biti zastarela."},
+    {"id": "gateway", "url": "https://gateway.warerastats.io/", "type": "third_party", "checked": "2026-10-12", "status": "unverified", "note": "Keš i grupisanje zahteva, limit 200/min. Podaci nisu živi, ne koristiti kao primarni izvor."},
+    {"id": "gameconfig", "url": "https://api2.warera.io/trpc/gameConfig.getGameConfig", "type": "official", "file": "data/gameconfig.json", "fetchedAt": "2026-10-12", "status": "fetched", "note": "Preuzeto workflow-om gameconfig.yml. Deo fajla na kraju nije pročitan (isecan pri čitanju)."},
+    {"id": "in-game-2026-10-12", "type": "in_game_observation", "observedAt": "2026-10-12", "status": "confirmed_in_game", "note": "Screenshotovi korisnika (mapa, inventar, veštine)."}
+  ],
+  "articles": [
+    {"url": "https://warera.io/en/articles/fundamentals-of-production-part-1-fundamental-concepts-4442b9", "author": "Potaje_Jr", "date": "2026-06-04", "status": "unverified", "note": "Efektivni PP, plata, porez sa etikom."},
+    {"url": "https://warera.io/en/articles/optimize-your-economy-automated-profit-wages-calculation-tool-v3-0-0-d963a7", "author": "DAAP", "date": "2026-06-03", "status": "unverified", "note": "Profit po PP i plata posle poreza; ne uzima etiku u obzir."},
+    {"url": "https://warera.io/en/articles/warera-production-advisor-for-eco-players-on-the-way-to-12-companies-040a61", "author": "MBF", "date": "2026-06-07", "status": "unverified", "note": "Optimizuje rast, ne dnevnu zaradu."},
+    {"url": "https://warera.io/en/articles/calculate-to-conquer-economic-build-calculator-a-guide-for-newbies-7ef245", "author": "kikonick", "date": "2026-05-25", "status": "unverified", "note": "PP opisan kao vrednost proizvoda (verovatno greška autora, PP su Production Points)."},
+    {"url": "https://warera.io/en/articles/warera-economic-tool-arcana-oeconomica-v3-0-update-6f10ca", "author": "Johnny", "date": "2026-08-25", "status": "unverified", "note": "Spisak funkcija, bez formula."},
+    {"url": "https://warera.io/en/articles/warera-economica-tool-overview-arcana-73246d", "author": "Johnny", "date": "2026-07-22", "status": "unverified", "note": "Pregled modula, bez formula."},
+    {"url": "https://warera.io/en/articles/my-companies-are-productive-i-m-winning-money-f43df2", "author": "Johnny", "date": "2026-04-12", "status": "unverified", "note": "Uputstvo, bez formula."},
+    {"url": "https://warera.io/en/articles/infinite-cash-theory-2a3c52", "author": "BABUL", "date": "2026-04-15", "status": "unverified", "note": "Strategija, nebitno za obračun."},
+    {"url": "https://warera.io/en/articles/api-and-token-3d6872", "author": "OMAR_COURTZ", "date": "2026-08-17", "status": "unverified", "note": "Token je privatan."},
+    {"url": "https://warera.io/en/articles/yet-another-war-era-beginner-s-guide-a53e5b", "author": "roostre", "date": "2026-08-29", "edited": "2026-09-19", "status": "unverified", "note": "Drvene kutije, lojalnost, kretanje."},
+    {"url": "https://warera.io/en/articles/warera-beginner-guide-level-1-10-631cb7", "author": "Rudrax", "date": "2026-08-28", "status": "unverified", "note": "Saveti, bez podataka."},
+    {"url": "https://warera.io/en/articles/warera-toolkit-update-v1-2-0-158412", "author": "Rolaz", "date": "2026-05-19", "status": "unverified", "note": "Zavisi od tuđeg klijenta, bez formula."},
+    {"url": "https://warera.io/en/articles/fight-skills-mechanics-guide-ca4d94", "status": "unavailable", "note": "Neuspelo učitavanje (dva pokušaja)."},
+    {"url": "https://warera.io/en/articles/nch-tools-addendum-518e7c", "status": "unavailable", "note": "Neuspelo učitavanje."},
+    {"url": "https://warera.io/en/articles/the-leveling-blueprint-why-economy-comes-before-combat-for-new-players-5b7e63", "status": "not_checked"},
+    {"url": "https://warera.io/en/articles/essential-websites-every-war-era-player-should-know-ec3f66", "status": "not_checked"},
+    {"url": "https://warera.io/en/articles/interactive-beginner-coach-version-2-81e808", "status": "not_checked"},
+    {"url": "https://warera.io/en/articles/warera-investment-report-d4ae99", "status": "not_checked"},
+    {"url": "https://warera.io/articles/app-listing-price-calculator-082deb", "status": "not_checked"},
+    {"url": "https://warera.io/articles/warera-war-planner-integrated-eco-war-build-optimizer-tool-83dfed", "status": "not_checked"},
+    {"url": "https://warera.io/articles/i-made-a-level-calculator-for-warera-42f0bb", "status": "not_checked"},
+    {"url": "https://app.warera.io/user/6995fcd09d27a4a583a02dea", "status": "not_checked"},
+    {"url": "https://www.reddit.com/r/warera/", "status": "not_checked"}
+  ],
+  "claims": [
+    {"id": "woodenCase.chance", "claim": "Šansa po bacanju = 25% + vrednost veštine Loot chance", "source": ["in-game-2026-10-12", "gameconfig"], "status": "confirmed_in_game", "note": "Tooltip 40%, Loot chance 15% (nivo 5); gameConfig lootChance nivo 5 = 15. Tooltip kaže Luck, veština se zove Loot chance, poklapanje po brojevima."},
+    {"id": "woodenCase.max", "claim": "Najviše 5 kutija odjednom", "source": ["in-game-2026-10-12"], "status": "confirmed_in_game", "note": "Brojač x/5, tekst tooltipa delimično vidljiv."},
+    {"id": "woodenCase.rollSchedule", "claim": "Bacanje na pun sat", "source": ["in-game-2026-10-12"], "status": "inferred", "note": "Iz dva tajmera (19m41s u 23:40, 20m19s oko 23:39)."},
+    {"id": "woodenCase.expiry", "claim": "Rok trajanja 48 h", "source": ["https://warera.io/en/articles/yet-another-war-era-beginner-s-guide-a53e5b"], "status": "unverified"},
+    {"id": "woodenCase.contents", "claim": "Sadržaj: sirovine, hrana, municija, povremeno pill", "source": ["https://warera.io/en/articles/yet-another-war-era-beginner-s-guide-a53e5b"], "status": "unverified", "note": "U igri piše samo: nasumične sirovine."},
+    {"id": "pill.cocain", "claim": "Pill: +60% napad, 8 h dejstvo, 15,5 h debuff", "source": ["gameconfig"], "status": "fetched"},
+    {"id": "worker.fidelity", "claim": "Lojalnost +1% dnevno, najviše 10%", "source": ["gameconfig"], "status": "fetched"},
+    {"id": "battle.orderBonus", "claim": "Bonus naredbe države i MU", "source": ["gameconfig"], "status": "needs_check", "note": "gameConfig: 10% za oba. Kalkulator koristi 15 (high) i 5 (low) iz battleOrder."},
+    {"id": "battle.healthCost", "claim": "healthCost iz konfiguracije", "source": ["gameconfig"], "status": "needs_check", "note": "gameConfig: 10. Kalkulator koristi 2-3 health po udarcu. Značenje polja nije poznato."},
+    {"id": "armor.dodge.formula", "claim": "Armor i dodge: x/(x+40)", "source": ["gameconfig"], "status": "unverified", "note": "Potvrđen je samo softCap 40, ne i oblik formule."},
+    {"id": "prestige", "claim": "Prestiž: kazna 65000 XP, množilac 50% + 10% po nivou", "source": ["gameconfig"], "status": "fetched"}
+  ]
+}

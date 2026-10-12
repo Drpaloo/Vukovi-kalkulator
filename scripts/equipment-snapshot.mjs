@@ -7,15 +7,19 @@ const API = "https://api2.warera.io/trpc/";
 const KEY = process.env.WARERA_API_KEY || "";
 const FILE = new URL("../data/equipment.json", import.meta.url);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// medijana sortiranog niza: srednji element, a za paran broj prosek dva srednja
+const median = v => { const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 
 if (!KEY) { console.log("WARERA_API_KEY nije podešen, preskačem (dodaj ga kao tajnu u Settings > Secrets and variables > Actions)."); process.exit(0); }
 
 async function api(proc, input, auth) {
   for (let t = 0; t < 6; t++) {
-    const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)), { headers: auth ? { "X-API-Key": KEY } : {} });
+    const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)), { headers: auth ? { "X-API-Key": KEY } : {}, signal: AbortSignal.timeout(20000) });
     if (r.status === 429) { await sleep(1500 * 2 ** t); continue; }
     if (!r.ok) throw new Error(`${proc} ${r.status}`);
-    return (await r.json()).result.data;
+    const j = await r.json().catch(() => null);
+    if (!j || !j.result) throw new Error(`${proc}: neispravan odgovor`);
+    return j.result.data;
   }
   throw new Error(`${proc}: previše zahteva (429)`);
 }
@@ -30,10 +34,10 @@ let ok = 0;
 for (const code of codes) {
   try {
     const d = await api("transaction.getPaginatedTransactions", { itemCode: code, transactionType: "itemMarket", limit: 40 }, true);
-    const good = d.items.filter(t => (t.item?.state || 0) >= 20);
+    const good = d.items.filter(t => (t.item?.state || 0) >= 20 && Number.isFinite(t.money));
     const v = good.map(t => t.money * 100 / t.item.state).sort((a, b) => a - b);
     if (!v.length) continue;
-    const e = { price: Math.round(v[Math.floor(v.length / 2)] * 1000) / 1000 };
+    const e = { price: Math.round(median(v) * 1000) / 1000 };
     const rng = cfg[code]?.dynamicStats || {}, st = "attack" in rng ? "attack" : Object.keys(rng)[0];
     const pts = good.map(t => { const x = t.item.skills?.[st]; return x == null ? null : [(x - rng[st][0]) / ((rng[st][1] - rng[st][0]) || 1), t.money * 100 / t.item.state]; }).filter(Boolean);
     if (pts.length >= 8) {

@@ -94,3 +94,9 @@ Glavni delovi:
 - Pitanja kroz kutiju sa opcijama (kad kutija bude odbijena, pitati običnim tekstom). Tekst za kopiranje u poseban blok.
 - Svaku izmenu: testirati Playwright-om (`/opt/node-tools/node_modules/playwright`, lokalni `python3 -m http.server 8765`), proveriti sintaksu, podići `VKV`, commit + push na `main`. Odgovor mora da kaže šta je urađeno i šta nije moglo da se proveri.
 - Ne zaobilaziti zaštitu igre (ponude na marketu, bonusi), ne tražiti prijavu igrača.
+
+## Audit 12. 10. 2026
+- Medijana cena opreme je sada prava medijana (prosek dve srednje vrednosti kad je broj paran), filtrira se i nevažeća cena.
+- Pozivi ka WarEra imaju ograničenje čekanja od 20 s i razumljive poruke za pokvaren odgovor ili prekid mreže; GitHub zadaci imaju `timeout-minutes`.
+- Imena iz igre (MU, savez, firma, igrač) ulaze u HTML kroz `esc()`.
+- Pregledano bez potrebe za izmenom: snimak štete (zbir je ukupan, ne resetuje se), formule štete i habanja, optimizator.

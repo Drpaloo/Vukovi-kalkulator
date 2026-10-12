@@ -10,10 +10,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function api(proc, input) {
   for (let t = 0; t < 6; t++) {
-    const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)));
+    const r = await fetch(API + proc + "?input=" + encodeURIComponent(JSON.stringify(input)), { signal: AbortSignal.timeout(20000) });
     if (r.status === 429) { await sleep(1500 * 2 ** t); continue; }
-    const j = await r.json();
-    if (!j.result) throw new Error(`${proc} ${JSON.stringify(j).slice(0, 120)}`);
+    const j = await r.json().catch(() => null);
+    if (!j || !j.result) throw new Error(`${proc} ${JSON.stringify(j).slice(0, 120)}`);
     return j.result.data;
   }
   throw new Error(`${proc}: previše zahteva (429)`);

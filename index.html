@@ -886,7 +886,7 @@ function renderRec(){
     return`<div class="tiles">`+pc("weapon",WCODE[x.w],x.w,WNAME[x.w],`${f(P.weapon.atk)} / ${f(P.weapon.cc)}%`)+
       pc("helmet","helmet"+(x.a+1),x.a,"Šlem",`+${f(P.helmet.v)}%`)+pc("chest","chest"+(x.a+1),x.a,"Grudi",f(P.chest.v))+pc("pants","pants"+(x.a+1),x.a,"Pant.",f(P.pants.v))+
       pc("boots","boots"+(x.a+1),x.a,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.a+1),x.a,"Ruk.",f(P.gloves.v))+
-      `<div class="tile tx"><span class="tn">Municija</span><span class="tm">+${AMMOM[x.ammo||"none"]??0}%</span><span class="ts">${AMS[x.ammo]||"bez"}</span></div>`+
+      `<div class="tile tx"><span class="tn">Municija</span><span class="tm">+${AMMOM[x.ammo||"none"]??0}%</span><span class="ts">${AMS[x.ammo]||"bez"}</span>${x.ammo&&x.ammo!=="none"?`<span class="ts"><b class="tpr" style="font-size:15px">${fmt(Math.ceil(x.h))}</b> metaka</span>`:""}</div>`+
       `<div class="tile tx"><span class="tn">${food?"Hrana":"Bez jela"}</span><span class="tm">${food?"+"+FOODHP[food]+"%":"–"}</span><span class="ts">${food?FDS[food]+" × "+x.meals:" "}</span></div></div>`};
   window._tiles=tiles;
   const sess=(k,sub,x,am,fd)=>`<div class="sess"><div class="sh"><span class="sk">${k}</span><span class="sm">${sub}</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${tiles({...x,ammo:am},fd)}</div>`;
@@ -1648,7 +1648,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="c5e7a0f3d8";
+const VKV="d6f8b1a4e9";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

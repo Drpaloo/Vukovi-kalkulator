@@ -505,7 +505,7 @@ tr.cur td{background:var(--brass-soft)}
     <p id="skAdvice" style="margin:10px 0 0"></p>
   </details>
   <section class="panel" style="display:grid;gap:10px">
-    <h2>Šta da kupiš i gde idu novi poeni</h2>
+    <h2>Novi poeni</h2>
     <span class="hint" id="plInNote"></span>
     <button id="plRun" type="button" class="btn">Napravi plan</button>
     <p id="plSum" style="margin:0"></p>
@@ -1288,13 +1288,8 @@ plRun.addEventListener("click",async()=>{
       rows.push({d,lv:lvP,add,free,dmg:c.dmg,net:c.net})}
     plOut.hidden=false;
     const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),same=lv===P.lvl&&SKK.every(k=>L[k]===L0[k]),s=cur.s||{};
-    const tot=rows.reduce((t,r)=>t+r.dmg,0),net7=rows.reduce((t,r)=>t+r.net,0);
-    plSum.innerHTML=cur.s?`<strong>${WNAME[+s.weap]} i ${SETM[+s.armor]} set, ${AMN[s.ammo]}, ${FDN[s.food]}${s.pill==="yes"?", pill":""}.</strong> Oko ${fk(cur.dmg)} štete dnevno, saldo ${sg(cur.net)} coina na dan. Za 7 dana oko ${fk(tot)} štete i ${sg(net7)} coina. Računato uz bonus ${o.bonus}%, čin +${o.rank}% i ${fmt(o.bp,3)} na 1k.`
-      :`<strong>Nijedan build ne ostaje u plusu</strong> sa ovim prihodom. Probaj manji nivo opreme ili više prihoda.`;
-    const cmp=lv===P.lvl,now=cmp&&!same?planEval(L0,o):null;
-    if(now)plSum.innerHTML+=` Sa sadašnjim skilovima: ${fk(now.dmg)} štete dnevno, saldo ${sg(now.net)}, pa plan daje ${now.dmg?sg((cur.dmg/now.dmg-1)*100):"+0"}% štete.`;
-    // tačni statovi i cena svakog komada, da se zna šta tačno da se kupi
-    if(cur.r&&cur.r.s1)plSum.innerHTML+=`<p style="margin:12px 0 4px"><strong>Šta tačno da kupiš</strong></p><p class="hint" style="margin:0 0 6px">Traži na marketu komad sa ovim statom ili jačim. Min je najslabiji komad te boje, Max najjači.</p>${gearStats(cur.r.s1,!!cur.s.qs1)}`;
+    plSum.innerHTML=cur.s?"":`<strong>Nijedan build ne ostaje u plusu</strong> sa ovim prihodom. Probaj manji nivo opreme ili više prihoda.`;
+    const cmp=lv===P.lvl;
     tPlSk.innerHTML=`<tr><th>Skil</th>${cmp?'<th class="n">Sad</th>':""}<th class="n">Plan</th><th class="n">Vrednost</th></tr>`+
       SKK.map(k=>`<tr${cmp&&L[k]!==L0[k]?' class="cur"':""}><td>${SKD[k][3]}</td>${cmp?`<td class="n">${L0[k]}</td>`:""}<td class="n">${L[k]}</td><td class="n">${skVal(k,L[k])}</td></tr>`).join("")+
       `<tr><td>Poeni</td>${cmp?`<td class="n">${skCostL(L0)}</td>`:""}<td class="n">${skCostL(L)} od ${budget}</td><td></td></tr>`;

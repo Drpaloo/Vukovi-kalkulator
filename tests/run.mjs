@@ -44,4 +44,11 @@ for (const f of readdirSync(new URL("scripts/", root)).filter(x => x.endsWith(".
   await test(`${f}: fetch dobija vremensko ograničenje`, async () => { let sig; await mk(async (u, o) => { sig = o && o.signal; return { status: 200, ok: true, json: async () => ({ result: { data: 1 } }) }; })("p", {}, true); assert.ok(sig, "nema signal-a"); });
 }
 
+
+await test("Elite case: šanse po retkosti iz tooltipa daju 100%", () => {
+  const m = pick(html, /const ELITERAR=\{[^\n]*\};/, "ELITERAR u index.html");
+  const R = new Function(m + "return ELITERAR")();
+  assert.deepEqual(R, { 2: 50, 3: 32, 4: 15, 5: 2.5, 6: 0.5 });
+  assert.equal(Object.values(R).reduce((a, b) => a + b, 0), 100);
+});
 console.log(n + " provera prošlo" + (process.exitCode ? ", ima grešaka" : ""));

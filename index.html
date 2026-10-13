@@ -636,7 +636,7 @@ let _PC=null;
 function prices(){if(_PC)return _PC;const p=D.prices;return{
   food:{bread:p.ask_bread,steak:p.steak,fish:p.ask_cookedFish},
   ammo:{none:0,light:p.ask_lightAmmo,ammo:p.ask_ammo,heavy:p.ask_heavyAmmo},
-  pill:p.ask_cocain,c1:Math.max(p.case1,caseOpen()),c2:p.case2}}
+  pill:p.ask_cocain,c1:Math.max(p.case1,caseOpen()),c2:Math.max(p.case2,eliteOpen())}}
 // izrada tačno izabranog komada traži duplo steel-a u odnosu na nasumičnu izradu
 function craftCost(r){const m=D.craftMats||FALLBACK.craftMats;return CRAFT[r]*m.scraps.bid+2*STEEL[r]*m.steel.ask}
 const CW={weapon:0.3,armour:0.14};
@@ -671,6 +671,11 @@ function lootVal(it){if(!it||!it.code)return 0;const c=it.code,r=rOf(c);if(!(r>=
   const v=it.skills&&it.skills[st],q=rg&&v!=null?qOf(rg,v):undefined,m=market(c,q),d=dismantle(c);const x=Math.max(isFinite(m)?m:0,d);return isFinite(x)?x:0}
 // novi komad rastavljen daje pune scraps-e izrade (Empress, 100% izdržljivosti)
 function dismantle(c){const m=D.craftMats||FALLBACK.craftMats;return CRAFT[rOf(c)]*m.scraps.bid}
+// Elite case: šanse po retkosti sa tooltipa u igri (Drop chances, screenshot Drpala 13.10.2026): uncommon 50, rare 32, epic 15, legendary 2.5, mythic 0.5.
+// Unutar retkosti pretpostavka kao kod običnog case-a i izrade: oružje 30%, svaki od 5 delova oklopa 14% (nije potvrđeno za Elite).
+const ELITERAR={2:50,3:32,4:15,5:2.5,6:.5};
+function eliteTier(t){return .30*Math.max(market(WCODE[t-1]),dismantle(WCODE[t-1]))+SLOTS.reduce((a,sl)=>a+.14*Math.max(market(sl+t),dismantle(sl+t)),0)}
+function eliteOpen(){return Object.entries(ELITERAR).reduce((a,[t,pc])=>a+pc/100*eliteTier(+t),0)}
 function caseOpen(){return Object.entries(CASEDROP).reduce((t,[c,p])=>t+p/100*Math.max(market(c),dismantle(c)),0)/Object.values(CASEDROP).reduce((a,b)=>a+b,0)*100}
 function scrapBack(r){const m=D.craftMats||FALLBACK.craftMats;return Math.floor(CRAFT[r]/3)*m.scraps.bid}
 
@@ -1144,13 +1149,14 @@ function craftPanel(){
     :`<strong>Izrada se danas ne isplati</strong> (najbolja je ${SETM[best.t.r].replace(/i$/,"a")}, ${sg(best.net)} po izradi). Scraps prodaj ili ih iskoristi za tačan komad kad je to jeftinije od marketa. Izrada počinje da se isplati kad scraps padnu ispod cene u koloni „Scraps do“.`;
 }
 function casePanel(){
-  const p=D.prices,ev=caseOpen(),open=ev>p.case1*1.02;
-  caseAdvice.innerHTML=open?`<strong>Obične case-ove otvaraj.</strong> U proseku vrede ~${fmt(ev,2)} otvoreni, a prodaju se za ${fmt(p.case1,2)}.`
-    :`<strong>Obične case-ove prodaj.</strong> Prodaju se za ${fmt(p.case1,2)}, a otvoreni u proseku vrede ~${fmt(ev,2)}.`;
+  const p=D.prices,ev=caseOpen(),open=ev>p.case1*1.02;const eo=eliteOpen(),eopen=eo>p.case2*1.02;
+  caseAdvice.innerHTML=(eopen?`<strong>Elite case-ove otvaraj.</strong> U proseku vrede ~${fmt(eo,2)} otvoreni, a prodaju se za ${fmt(p.case2,2)}. `:`<strong>Elite case-ove prodaj.</strong> Prodaju se za ${fmt(p.case2,2)}, a otvoreni u proseku vrede ~${fmt(eo,2)}. `)+(open?`<strong>Obične case-ove otvaraj.</strong> U proseku vrede ~${fmt(ev,2)} otvoreni, a prodaju se za ${fmt(p.case1,2)}.`
+    :`<strong>Obične case-ove prodaj.</strong> Prodaju se za ${fmt(p.case1,2)}, a otvoreni u proseku vrede ~${fmt(ev,2)}.`);
   const top=Object.entries(CASEDROP).map(([c,pc])=>({c,pc,v:pc/100*Math.max(market(c),dismantle(c))})).sort((a,b)=>b.v-a.v).slice(0,4);
   tCase.innerHTML=`<tr><th>Case</th><th class="n">Prodaj</th><th class="n">Otvori, prosek</th><th>Danas</th></tr>`+
     `<tr><td>Običan</td><td class="n">${fmt(p.case1,2)}</td><td class="n">${fmt(ev,2)}</td><td><span class="chip ${open?"b":"g"}">${open?"Otvori":"Prodaj"}</span></td></tr>`+
-    `<tr><td>Elite</td><td class="n">${fmt(p.case2,2)}</td><td class="n">?</td><td><span class="chip g">Prodaj</span> <span class="hint">nemam tabelu šta pada</span></td></tr>`+
+    `<tr><td>Elite</td><td class="n">${fmt(p.case2,2)}</td><td class="n">${fmt(eo,2)}</td><td><span class="chip ${eopen?"b":"g"}">${eopen?"Otvori":"Prodaj"}</span></td></tr>`+
+    `<tr><td colspan="4" class="hint">Elite šanse (tooltip u igri): ${[[2,"zelena"],[3,"plava"],[4,"ljubičasta"],[5,"žuta"],[6,"crvena"]].map(([t,n])=>`<span class="q${t-1}">${n}</span> ${fmt(ELITERAR[t],ELITERAR[t]%1?1:0)}% (~${fmt(eliteTier(t),2)})`).join(", ")}. U zagradi je prosečna vrednost komada te retkosti. Unutar retkosti računa oružje 30%, deo oklopa po 14% (pretpostavka, nije potvrđeno za Elite).</td></tr>`+
     `<tr><td colspan="4" class="hint">Najviše vrednosti nose: ${top.map(x=>codeName(x.c)+" "+(x.pc>=1?fmt(x.pc,1):x.pc.toFixed(2))+"%").join(", ")}. Šanse su sa warerastats.io/cases. U saldo ulazi veća od dve vrednosti.</td></tr>`;
   const m=D.craftMats||FALLBACK.craftMats;
   dismNote.textContent=`Rastavljen nov komad daje pune scraps-e izrade (po Empress podacima), po ${m.scraps.bid.toFixed(3)}. Istrošen komad se sam rastavi na trećinu. „Kupi za scrap do“ (kao na WarEra Treneru): ako na marketu nađeš komad te boje jeftiniji od toga, kupi ga, rastavi i prodaj scraps, uz 5% rezerve za promenu cene.`;

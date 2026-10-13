@@ -492,6 +492,7 @@ tr.cur td{background:var(--brass-soft)}
   </details>
   <details class="panel">
     <summary>Cene opreme i preporuka kupi ili napravi po komadu</summary>
+    <p class="hint" style="margin:4px 0 0" id="priceAge"></p>
     <p class="hint" style="margin:4px 0 8px" id="priceNote"></p>
     <div id="tPrice" class="pgrid"></div>
   </details>
@@ -1042,6 +1043,7 @@ async function refreshPrices(){if(_rpBusy||document.hidden||!D.me||!D.me.id)retu
   const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
   _rpBusy=true;try{
     const PR={};await pool(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","scraps","steel"],4,async it=>{PR[it]=await book(it)});
+    const bad=Object.keys(PR).filter(k=>!PR[k]||PR[k].fail);if(!bad.length)PRT.at=Date.now();PRT.fail=bad;priceAge();
     const before=JSON.stringify([D.prices,D.craftMats,D.equipment,D.equipAt]),ok=x=>x&&x.bid>0&&x.ask>0,pr={...D.prices},set=(k,v)=>{if(v>0)pr[k]=v};
     set("steak",PR.steak.ask);set("ask_bread",PR.bread.ask);set("ask_cookedFish",PR.cookedFish.ask);set("ask_lightAmmo",PR.lightAmmo.ask);set("ask_ammo",PR.ammo.ask);set("ask_heavyAmmo",PR.heavyAmmo.ask);set("ask_cocain",PR.cocain.ask);set("case1",PR.case1.bid);set("case2",PR.case2.bid);
     D.prices=pr;if(ok(PR.scraps)&&ok(PR.steel))D.craftMats={...(D.craftMats||{}),scraps:PR.scraps,steel:PR.steel};
@@ -1569,7 +1571,15 @@ async function api(proc,input,auth){
   finally{APIQ--;const n=APIW.shift();if(n)n()}
 }
 async function pool(items,n,fn){const out=[];let i=0;await Promise.all(Array.from({length:n},async()=>{while(i<items.length){const k=i++;try{out[k]=await fn(items[k])}catch(e){out[k]=null}}}));return out}
-async function book(item){try{const d=await api("tradingOrder.getTopOrders",{itemCode:item,limit:3});return{bid:d.buyOrders[0]?.price??0,ask:d.sellOrders[0]?.price??0}}catch(e){return{bid:0,ask:0}}}
+async function book(item){try{const d=await api("tradingOrder.getTopOrders",{itemCode:item,limit:3});return{bid:d.buyOrders[0]?.price??0,ask:d.sellOrders[0]?.price??0}}catch(e){return{bid:0,ask:0,fail:true}}}
+// kad su cene sa marketa poslednji put uspešno povučene; neuspešne stavke se ne pretvaraju u nulu, a zastarelo se vidi
+let PRT={at:null,fail:[]};
+function priceAge(){const el=document.getElementById("priceAge");if(!el||!PRT.at&&!PRT.fail.length)return;const m=PRT.at?Math.floor((Date.now()-PRT.at)/6e4):null,w=[];
+  if(PRT.fail.length)w.push(`nije uspelo povlačenje za: ${PRT.fail.join(", ")} (važi poslednja poznata cena)`);
+  if(m!=null&&m>15)w.push(`cene su stare ${m} min, osveži stranicu`);
+  if(D.equipAt&&Date.now()-new Date(D.equipAt)>90*6e4)w.push(`snimak cena opreme je star ${Math.round((Date.now()-new Date(D.equipAt))/6e4)} min`);
+  el.innerHTML=(PRT.at?`Cene sa marketa povučene u ${new Date(PRT.at).toLocaleTimeString("sr-Latn",{hour:"2-digit",minute:"2-digit",second:"2-digit"})} (pre ${m} min).`:"Cene sa marketa nisu povučene.")+(w.length?` <span style="color:var(--bad)">Upozorenje: ${esc(w.join("; "))}.</span>`:"")}
+setInterval(priceAge,3e4);
 const REG={},CNAME={};
 async function region(id){return REG[id]||(REG[id]=await api("region.getById",{regionId:id}))}
 // regioni tvoje države koje drži druga država (za −50% kad biješ za nju); ceo spisak regiona vučemo samo jednom
@@ -1619,6 +1629,7 @@ async function loadUser(name){
     const need=new Set(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","woodenCase","scraps","steel"]);
     comps.forEach(c=>{need.add(c.itemCode);Object.keys(cfg[c.itemCode]?.productionNeeds||{}).forEach(i=>need.add(i))});
     const PR={};await pool([...need],8,async it=>{PR[it]=await book(it)});
+    const badP=[...need].filter(k=>!PR[k]||PR[k].fail),fv=(v,k)=>v>0?v:(FALLBACK.prices[k]||0);
     const cntC={};
     // etika vladajuće stranke: Fanatic Industrialist +30% na municiju i građevinski specijalitet, Fanatic Agrarian +30% na depozite hrane i bez specijaliteta
     const ethC={},ethOf=co=>co.rulingParty?(ethC[co._id]||(ethC[co._id]=api("party.getById",{partyId:co.rulingParty}).then(p=>p.ethics||{}).catch(()=>({})))):Promise.resolve({});
@@ -1639,13 +1650,14 @@ async function loadUser(name){
     const sd=(b,k)=>({c:b[k].country,n:CNAME[b[k].country]||(b.type==="resistance"&&k==="attacker"?"Pobunjenici":"?"),co:b[k].countryOrders||[],mo:b[k].muOrders||[]});
     const activeBattles=act.map(b=>({id:b._id,type:b.type,at:b.createdAt,region:"",bunker:0,att:sd(b,"attacker"),def:sd(b,"defender")}));
     D={...FALLBACK,updatedAt:new Date().toISOString(),me,activeBattles,firms,firmsEngines:engines,firmsWorkers:0,wagesPaid24h:0,firmsTotal:engines,
-      prices:{steak:PR.steak.ask,ask_bread:PR.bread.ask,ask_cookedFish:PR.cookedFish.ask,ask_lightAmmo:PR.lightAmmo.ask,ask_ammo:PR.ammo.ask,ask_heavyAmmo:PR.heavyAmmo.ask,ask_cocain:PR.cocain.ask,case1:PR.case1.bid,case2:PR.case2.bid,wooden:PR.woodenCase.bid},
-      craftMats:{scraps:PR.scraps,steel:PR.steel},equipment:{...FALLBACK.equipment},myGear,
+      prices:{steak:fv(PR.steak.ask,"steak"),ask_bread:fv(PR.bread.ask,"ask_bread"),ask_cookedFish:fv(PR.cookedFish.ask,"ask_cookedFish"),ask_lightAmmo:fv(PR.lightAmmo.ask,"ask_lightAmmo"),ask_ammo:fv(PR.ammo.ask,"ask_ammo"),ask_heavyAmmo:fv(PR.heavyAmmo.ask,"ask_heavyAmmo"),ask_cocain:fv(PR.cocain.ask,"ask_cocain"),case1:fv(PR.case1.bid,"case1"),case2:fv(PR.case2.bid,"case2"),wooden:PR.woodenCase.bid},
+      craftMats:(PR.scraps.bid>0&&PR.scraps.ask>0&&PR.steel.bid>0&&PR.steel.ask>0)?{scraps:PR.scraps,steel:PR.steel}:FALLBACK.craftMats,equipment:{...FALLBACK.equipment},myGear,
       week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],keyless:!KEY,
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,
       plan:{lvl:user.leveling?.level||1,xp:user.leveling?.totalXp||0,xpCur:user.leveling?.xp??user.leveling?.totalXp??0,prest:user.leveling?.prestigeLevel||0,created:user.createdAt,rankN:user.militaryRank||0,rankPct:sk.attack.militaryRankPercent||0,lastReset:user.dates?.lastSkillsResetAt||null}};
     // sveže cene opreme iz dnevnog snimka (GitHub zadatak), da svaki igrač dobije aktuelne cene i bez ključa
     try{const r=await fetch("data/equipment.json?nc="+Math.floor(Date.now()/3e5));if(r.ok){const q=await r.json();if(q&&q.items){Object.entries(q.items).forEach(([c,e])=>{if(e&&e.price>0)D.equipment[c]=e});D.equipAt=q.updated}}}catch(e){}
+    PRT={at:badP.length<need.size?Date.now():null,fail:badP};priceAge();
     wealthTrack(user._id).then(()=>{try{ovRender()}catch(e){}});
     const allP=await api("itemTrading.getPrices").catch(()=>({}));
     D.econ={prices:allP,book:PR,items:Object.fromEntries(Object.entries(cfg).filter(([k,v])=>v&&v.productionPoints).map(([k,v])=>[k,{pp:v.productionPoints,needs:v.productionNeeds||{},ammo:v.usage==="ammo"}])),

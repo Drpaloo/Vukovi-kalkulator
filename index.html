@@ -374,7 +374,7 @@ tr.cur td{background:var(--brass-soft)}
         <details class="adv2"><summary style="cursor:pointer;color:var(--brass);font-size:14px">Napredno: ostali prihodi</summary>
           <div style="display:grid;gap:6px;margin-top:8px">
           <label for="firmMan" style="font-size:14px">Zarada firmi dnevno (prazno = računa API)</label><input type="number" id="firmMan" min="0" step="1" inputmode="decimal">
-          <label for="woodIn" style="font-size:14px">Wooden case-ovi dnevno, u coins</label><input type="number" id="woodIn" min="0" step="1" value="63" inputmode="decimal">
+          <label for="woodIn" style="font-size:14px">Wooden case-ovi dnevno, u coins (prazno = računa se sam)</label><input type="number" id="woodIn" min="0" step="1" value="" placeholder="auto" inputmode="decimal"><span class="hint" id="woodNote"></span>
           <label for="poolIn" style="font-size:14px">Pool loot dnevno, u coins (prazno = računa se sam)</label><input type="number" id="poolIn" min="0" step="1" value="" placeholder="auto" inputmode="decimal">
           <span class="hint" id="poolNote">Wooden case-ovi i pool loot su procene. Upiši svoje ako znaš koliko ti padne.</span></div>
         </details>
@@ -558,6 +558,11 @@ const FALLBACK={updatedAt:null,me:{country:"6873d0ea1758b40e712b5ef7",mu:"69b7a3
   craftMats:{scraps:{bid:0.248,ask:0.249},steel:{bid:1.828,ask:1.833}},freePts:1,spentPts:167,
   plan:{lvl:42,xp:65480,created:"2025-09-28T22:01:24Z",rankN:75,rankPct:23,lastReset:"2026-10-05T21:36:37Z"}};
 let D={...FALLBACK,week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],firms:[],firmsTotal:0};
+// wooden case: roll 1x na sat, šansa 25% + Luck (skill lootChance); izvor: tooltip u igri + gameConfig, 13.10.2026 (znanje/proizvodnja-wooden-case-drop.md)
+const WOOD={rollsPerDay:24,baseChance:25,fallbackPrice:6.85};
+function woodAuto(){const pr=(D.prices&&D.prices.wooden)||WOOD.fallbackPrice,p=(WOOD.baseChance+BASE.loot)/100,n=WOOD.rollsPerDay*p;
+  const el=document.getElementById("woodNote");if(el)el.textContent=`Računa se: ${WOOD.rollsPerDay} rollova × ${fmt(p*100,0)}% (25% + Luck ${BASE.loot}) = ${fmt(n,1)} case-a dnevno × ${fmt(pr,2)}${D.prices&&D.prices.wooden?"":" (cena nije učitana, uzeta 6,85 od 13.10.)"}. Pretpostavka: skupljaš ih sa mape (max 5 neuzetih).`;
+  return n*pr}
 let BASE={attack:325,precision:80,cc:40,cd:240,armor:18,dodge:20,health:120,hunger:6,loot:15,rank:23};
 const API="https://api2.warera.io/trpc/";let KEY="",CUR=null;
 const RAR=["Siva","Zelena","Plava","Ljubičasta","Žuta","Crvena"];
@@ -663,7 +668,7 @@ function calc(s){
   const S=[a,b].filter(Boolean), sum=k=>S.reduce((t,x)=>t+x[k],0);
   const h=sum("h"),dmg=sum("dmg"),meals=sum("meals");
   const num=(el,d)=>{const v=parseFloat(String(el.value).replace(",","."));return isFinite(v)&&v>=0?v:d};
-  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:num(woodIn,63),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:dmg/1000*(s.bp??0)};
+  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:woodIn.value!==""?num(woodIn,0):woodAuto(),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:dmg/1000*(s.bp??0)};
   const out={weapon:sum("weapon"),armor:sum("armor"),food:meals*P.food[s.food],ammo:sum("ammo"),pill:pill?P.pill:0};
   const I=Object.values(inc).reduce((x,y)=>x+y,0),O=Object.values(out).reduce((x,y)=>x+y,0);
   return{h,meals,dmg,Y:a.Y,st:a.st,aE:a.aE,dE:a.dE,hpHit:a.hpHit,wCost:a.wCost,setCost:a.setCost,s1:a,s2:b,inc,out,I,O,net:I-O};
@@ -1559,7 +1564,7 @@ async function loadUser(name){
     const cfg=(await api("gameConfig.getGameConfig")).items;
     const ids=(await api("company.getCompanies",{userId:user._id,perPage:50})).items;
     const comps=(await pool(ids,6,id=>api("company.getById",{companyId:id}))).filter(c=>c&&!c.disabledAt);
-    const need=new Set(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","scraps","steel"]);
+    const need=new Set(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","woodenCase","scraps","steel"]);
     comps.forEach(c=>{need.add(c.itemCode);Object.keys(cfg[c.itemCode]?.productionNeeds||{}).forEach(i=>need.add(i))});
     const PR={};await pool([...need],8,async it=>{PR[it]=await book(it)});
     const cntC={};
@@ -1582,7 +1587,7 @@ async function loadUser(name){
     const sd=(b,k)=>({c:b[k].country,n:CNAME[b[k].country]||(b.type==="resistance"&&k==="attacker"?"Pobunjenici":"?"),co:b[k].countryOrders||[],mo:b[k].muOrders||[]});
     const activeBattles=act.map(b=>({id:b._id,type:b.type,at:b.createdAt,region:"",bunker:0,att:sd(b,"attacker"),def:sd(b,"defender")}));
     D={...FALLBACK,updatedAt:new Date().toISOString(),me,activeBattles,firms,firmsEngines:engines,firmsWorkers:0,wagesPaid24h:0,firmsTotal:engines,
-      prices:{steak:PR.steak.ask,ask_bread:PR.bread.ask,ask_cookedFish:PR.cookedFish.ask,ask_lightAmmo:PR.lightAmmo.ask,ask_ammo:PR.ammo.ask,ask_heavyAmmo:PR.heavyAmmo.ask,ask_cocain:PR.cocain.ask,case1:PR.case1.bid,case2:PR.case2.bid},
+      prices:{steak:PR.steak.ask,ask_bread:PR.bread.ask,ask_cookedFish:PR.cookedFish.ask,ask_lightAmmo:PR.lightAmmo.ask,ask_ammo:PR.ammo.ask,ask_heavyAmmo:PR.heavyAmmo.ask,ask_cocain:PR.cocain.ask,case1:PR.case1.bid,case2:PR.case2.bid,wooden:PR.woodenCase.bid},
       craftMats:{scraps:PR.scraps,steel:PR.steel},equipment:{...FALLBACK.equipment},myGear,
       week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],keyless:!KEY,
       freePts:(user.leveling||{}).availableSkillPoints||0,spentPts:(user.leveling||{}).spentSkillPoints||0,

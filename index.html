@@ -137,21 +137,26 @@ details.adv[open]{display:grid;gap:16px}
 .ovc2:hover{border-color:var(--brass)}.ovc2:focus-visible{outline:2px solid var(--brass)}
 /* Skilovi: trakice nivoa */
 .skl{display:grid;gap:2px}
-.sktop{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}.sktop label{display:flex;align-items:center;gap:8px;white-space:nowrap}.sktop input{width:70px}
+.sktop{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.nfl{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink)}.nfl>label{white-space:nowrap}
+.numf{display:inline-flex;align-items:stretch;height:40px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.numf button{width:40px;border:0;background:transparent;color:var(--brass);font:inherit;font-size:20px;line-height:1;cursor:pointer;touch-action:manipulation}.numf button:active{background:rgba(212,170,70,.12)}
+.numf input{width:58px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:0;background:transparent;color:var(--ink);text-align:center;font:inherit;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;padding:0;outline:none;-webkit-appearance:none;appearance:none}
+.numf input::placeholder{color:var(--muted);font-weight:400}.numf:focus-within{border-color:var(--brass)}
 .skgrid{display:grid;gap:16px;align-items:start}.skcol{display:grid;gap:12px;min-width:0}
 .sk-a{order:2}.sk-c{order:1}.sk-r{order:3}
 @media (min-width:900px){.skgrid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-areas:"a c" "a r";grid-template-rows:auto 1fr}.sk-a{grid-area:a}.sk-c{grid-area:c}.sk-r{grid-area:r}}
-.skbtns{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.skmin{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.skmin input{width:70px}
+.skbtns{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .skcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .skc{display:grid;gap:2px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.03)}.skc.nw{border-color:var(--brass)}
 .skc .bn{font-family:var(--display);font-size:26px;font-weight:700;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums}
 .skc .bl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.skc .bs{font-size:13px;color:var(--muted)}
 .skd{border-top:1px solid var(--line);padding-top:8px}.skd summary{cursor:pointer;font-weight:600}
-.stp button.pc{width:auto;min-width:32px;padding:0 6px;font-size:13px}
-.skl .sk{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+.stp button.pc{width:44px;padding:0;font-size:13px}
+.skl .sk{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n s" "b b";gap:8px 10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}.skl .skn{grid-area:n}.skl .bar{grid-area:b}.skl .stp{grid-area:s}
 .skl .sk.cur{background:rgba(212,170,70,.07)}
 .skl .skn{display:grid;gap:1px;min-width:0}.skl .skn b{font-size:14px}.skl .skn span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.skl .bar{display:flex;gap:3px}.skl .bar i{flex:1;height:9px;border-radius:2px;background:var(--line,#8884)}
+.skl .bar{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px;align-items:center;min-width:0}.skl .bar i{display:block;height:14px;border-radius:2px;background:rgba(255,255,255,.08)}
 .skl .bar i.on{background:var(--brass)}.skl .bar i.up{background:var(--good)}.skl .bar i.dn{background:transparent;outline:1px solid var(--bad);outline-offset:-1px}
 .skl .skg{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);padding:12px 4px 4px}
 /* Oprema: cene po boji */
@@ -500,7 +505,7 @@ tr.cur td{background:var(--brass-soft)}
   <section class="panel" style="display:grid;gap:12px">
     <h2>Tvoj build</h2>
     <div class="sktop">
-      <label>Planiraj za nivo <input type="text" id="skLvl" inputmode="numeric" autocomplete="off" placeholder="sad"></label>
+      <div class="nfl"><label for="skLvl">Planiraj za nivo</label><span class="numf"><button type="button" data-nf="skLvl" data-d="-1" aria-label="Nivo manje">−</button><input type="text" id="skLvl" inputmode="numeric" autocomplete="off" placeholder="sad"><button type="button" data-nf="skLvl" data-d="1" aria-label="Nivo više">+</button></span></div>
       <p class="hint" id="skLeft" style="margin:0"></p>
     </div>
     <p id="skPrest" style="margin:0;font-size:14px"></p>
@@ -511,7 +516,7 @@ tr.cur td{background:var(--brass-soft)}
           <button id="skRun" type="button" class="btn">Predloži najbolje</button>
           <button id="skMReset" type="button" class="linkbtn">Vrati na tvoje skilove</button>
         </div>
-        <label class="skmin">Najmanji plus dnevno (coins)<input type="text" id="skMin" value="20" inputmode="decimal" autocomplete="off"></label>
+        <div class="nfl"><label for="skMin">Najmanji plus dnevno</label><span class="numf"><button type="button" data-nf="skMin" data-d="-5" aria-label="Manje">−</button><input type="text" id="skMin" value="20" inputmode="decimal" autocomplete="off"><button type="button" data-nf="skMin" data-d="5" aria-label="Više">+</button></span></div>
       </div>
       <div class="skcol sk-c">
         <div class="skcards">
@@ -1283,7 +1288,11 @@ function skManual(){const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.
   skMNote.textContent=`Bonus bitke ${B}%. „Preporuka“ je najbolji build uz plus za te skilove, „Tvoj build“ je ono što si namestio u Probaj svoj build. ${T>lvNow?`Za nivo ${T} se menjaju samo poeni: čin, oprema i cene ostaju kao sad, a skilovi se otključavaju na svom nivou. `:""}Eko skilovi menjaju prihod: Companies dodaje ili oduzima firmu (najslabiju gubiš prvu, nova se računa kao prosečna i treba je otvoriti), Management radnike, a Entrepreneurship, Energy i Production lični rad.`}
 tSkM.addEventListener("click",e=>{const b=e.target.closest("button[data-k],button[data-e]");if(!b)return;if(b.dataset.k)SKM[b.dataset.k]+=+b.dataset.d;else ECM[b.dataset.e]+=+b.dataset.d;skManual()});
 skMReset.addEventListener("click",()=>{SKM=null;ECM=null;skLvl.value="";skManual()});
-skLvl.addEventListener("input",skManual);skMin.addEventListener("input",skManual);
+skLvl.addEventListener("input",skManual);
+// −/+ uz polja: nivo ide od sadašnjeg do 50, najmanji plus po 5 coina (ne ispod 0)
+document.getElementById("tab-skilovi").addEventListener("click",e=>{const b=e.target.closest("button[data-nf]");if(!b)return;e.preventDefault();const el=document.getElementById(b.dataset.nf),d=+b.dataset.d;
+  if(el===skLvl){const{now,T}=skTarget(),v=Math.max(now,Math.min(50,T+d));el.value=v===now?"":String(v)}else{el.value=String(Math.max(0,plNum(el,20)+d))}
+  el.dispatchEvent(new Event("input"))});skMin.addEventListener("input",skManual);
 // ---- Plan 7 dana ----
 // medijana skilova ratnih igrača iz nedeljne rang liste štete (10.10.2026, 116 igrača), po nivou
 const META=[[30,{health:4,hunger:3,attack:6,cc:5,cd:4,armor:2,precision:5,dodge:5,loot:4}],[38,{health:5,hunger:4,attack:7,cc:6,cd:5,armor:4,precision:5,dodge:5,loot:3}],

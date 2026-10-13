@@ -1152,8 +1152,10 @@ function casePanel(){
     RAR.map((n,r)=>`<tr><td>${rn(r,n)}</td><td class="n">${fmt(CRAFT[r]*m.scraps.bid,1)}</td><td class="n">${fmt(CRAFT[r]*m.scraps.bid*0.95,2)}</td>${cell(WCODE[r])}${SLOTS.map(x=>cell(x+(r+1))).join("")}</tr>`).join("");
 }
 // skilovi: vrednost po nivou (gameConfig), nivo n košta n poena
-const SKD={attack:["attack",100,25,"Attack"],precision:["precision",50,5,"Precision"],cc:["criticalChance",10,5,"Crit šansa"],cd:["criticalDamages",100,20,"Crit šteta"],
-  armor:["armor",0,6,"Armor"],dodge:["dodge",0,4,"Dodge"],health:["health",100,10,"Health"],hunger:["hunger",4,1,"Hunger"],loot:["lootChance",5,2,"Loot"]};
+const SKD={attack:["attack",100,25,"Attack"],precision:["precision",50,5,"Precision"],cc:["criticalChance",10,5,"Crit. chance"],cd:["criticalDamages",100,20,"Crit. damages"],
+  armor:["armor",0,6,"Armor"],dodge:["dodge",0,4,"Dodge"],health:["health",100,10,"Health"],hunger:["hunger",4,1,"Hunger"],loot:["lootChance",5,2,"Loot chance"]};
+// redosled prikaza kao u igri (Fight skills, pa Economic skills); računanje i dalje ide po SKK/ECK
+const SKV=["attack","precision","cc","cd","armor","dodge","health","loot","hunger"],EKV=["entrepreneurship","energy","production","companies","management"];
 // nivo skila iz API-ja (SKL) kad ga imamo; prestiž dodaje vrednost bez poena, pa ga čuvamo kao pomak (SKOFF)
 let SKL=null,SKOFF={};
 const SKK=Object.keys(SKD),skLv=k=>SKL&&SKL[k]!=null?SKL[k]:Math.round((BASE[k]-SKD[k][1])/SKD[k][2]),skVal=(k,l)=>SKD[k][1]+l*SKD[k][2]+(SKOFF[k]||0),skCost=l=>l*(l+1)/2;
@@ -1169,7 +1171,7 @@ const minGain=(d,d0)=>Math.min(...d.map((x,i)=>d0[i]>0?x/d0[i]:1));
 // potez = jedan nivo iz skila u skil (ili iz slobodnih poena); prvo brzi izbor najjačih poteza, pa pun pregled svih poteza pre kraja
 // kreće iz tvog rasporeda i iz rasporeda iskusnih igrača za tvoj nivo, i zadržava bolji
 const ECK=["companies","entrepreneurship","production","management","energy"],ECUNL={companies:5,management:10};
-const skName=k=>SKD[k]?SKD[k][3]:k==="energy"?"Energija (posao kod drugog)":ECOD[k][0],skV=(k,l)=>SKD[k]?skVal(k,l):ecoVal(k,l);
+const skName=k=>SKD[k]?SKD[k][3]:k==="energy"?"Energy":ECOD[k][0],skV=(k,l)=>SKD[k]?skVal(k,l):ecoVal(k,l);
 skRun.addEventListener("click",async()=>{
   const LV=(D.econ&&D.econ.sk&&D.econ.sk.lv)||null,ALL=[...SKK,...(LV?ECK:[])],lv=(D.plan&&D.plan.lvl)||50;
   const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)]));if(LV)ECK.forEach(k=>L0[k]=LV[k]||0);const ALLK=ALL.filter(k=>k!=="energy"||(LV&&LV.energy!=null));ALL.length=0;ALL.push(...ALLK);
@@ -1214,8 +1216,8 @@ skRun.addEventListener("click",async()=>{
     SKPLAN=same||g<1.005?null:{L:Object.fromEntries(SKK.map(k=>[k,L[k]])),eco:ec,ecoNote:en};if(SKPLAN&&LV){SKPLAN.E=Object.fromEntries(ECK.map(k=>[k,L[k]]))}}
   if(!same&&g>=1.005){SKM=Object.fromEntries(SKK.map(k=>[k,L[k]]));if(LV)ECM={...LV,...Object.fromEntries(ECK.map(k=>[k,L[k]]))};skLvl.value="";skManual()}
   const row=k=>`<tr${L[k]!==L0[k]?' class="cur"':""}><td>${skName(k)}</td><td class="n">${L0[k]}</td><td class="n">${L[k]}${L[k]!==L0[k]?` (${L[k]>L0[k]?"+":""}${L[k]-L0[k]})`:""}</td><td class="n">${skV(k,L0[k])} → ${skV(k,L[k])}</td></tr>`;
-  tSk.innerHTML=`<tr><th>Skil</th><th class="n">Sad</th><th class="n">Predlog</th><th class="n">Vrednost</th></tr>`+SKK.map(row).join("")+
-    (LV?`<tr><th colspan="4">Ekonomski skilovi</th></tr>`+ECK.map(row).join(""):"")+
+  tSk.innerHTML=`<tr><th>Skil</th><th class="n">Sad</th><th class="n">Predlog</th><th class="n">Vrednost</th></tr>`+SKV.map(row).join("")+
+    (LV?`<tr><th colspan="4">Ekonomski skilovi</th></tr>`+EKV.filter(k=>ALL.includes(k)).map(row).join(""):"")+
     `<tr><td>Poeni</td><td class="n">${cost(L0)}</td><td class="n">${cost(L)} od ${budget}</td><td></td></tr>`+
     `<tr><th>Bonus bitke</th><th class="n">Šteta sad</th><th class="n">Šteta posle</th><th class="n">Razlika</th></tr>`+B.map((x,i)=>`<tr><td>${x}%${x===+bonus.value?" (izabrana)":""}</td><td class="n">${fk(d0x[i])}</td><td class="n">${fk(cur[i])}</td><td class="n">${d0x[i]?sg((cur[i]/d0x[i]-1)*100):"0"}%</td></tr>`).join("");
   const eco=[];if(LV){const firms=[...(D.firms||[])].sort((a,b)=>(a.perDay||0)-(b.perDay||0));
@@ -1254,13 +1256,14 @@ function withEco(E1,fn){const SK=D.econ&&D.econ.sk,LV=SK&&SK.lv;if(!LV||!E1)retu
 const PTS_PER_LVL=4;
 function skTarget(){const now=Math.max(1,(D.plan||{}).lvl||1),v=parseInt(String(skLvl.value).trim(),10);return{now,T:isFinite(v)?Math.max(now,Math.min(50,v)):now}}
 function skManual(){const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.freePts??FALLBACK.freePts??0,LV=(D.econ&&D.econ.sk&&D.econ.sk.lv)||null,{now:lvNow,T}=skTarget();
-  const ecoC=E=>E?Object.keys(ECOD).reduce((t,k)=>t+skCost(E[k]||0),0):0,budget=SKK.reduce((t,k)=>t+skCost(L0[k]),0)+free+ecoC(LV)+PTS_PER_LVL*(T-lvNow);
+  const EK=EKV.filter(k=>ECOD[k]||(LV&&LV[k]!=null));
+  const ecoC=E=>E?EK.reduce((t,k)=>t+skCost(E[k]||0),0):0,budget=SKK.reduce((t,k)=>t+skCost(L0[k]),0)+free+ecoC(LV)+PTS_PER_LVL*(T-lvNow);
   if(!SKM)SKM={...L0};if(!ECM&&LV)ECM={...LV};const used=SKK.reduce((t,k)=>t+skCost(SKM[k]),0)+ecoC(ECM),left=budget-used;
   // skilovi kao trakice: puni segmenti su sadašnji nivo, zeleni su dodati, crveni uklonjeni
   const bar=(l,b)=>`<span class="bar" aria-hidden="true">${Array.from({length:10},(_,n)=>{n++;return`<i class="${n<=Math.min(l,b)?"on":l>b&&n<=l?"up":l<b&&n<=b?"dn":""}"></i>`}).join("")}</span>`;
   const row=(name,val,l,b,attr,k,aria,dis1,dis2)=>`<div class="sk${l!==b?" cur":""}"><div class="skn"><b>${name}</b><span>${val}</span></div>${bar(l,b)}<span class="stp"><button type="button" ${attr}="${k}" data-d="-1" aria-label="${aria} manje" ${dis1?"disabled":""}>−</button><b>${l}</b><button type="button" class="pc" ${attr}="${k}" data-d="1" aria-label="${aria} više${l<10?`, košta ${l+1} poena`:""}" title="${l<10?`Sledeći nivo košta ${l+1} poena`:"Maksimum"}" ${dis2?"disabled":""}>+${l<10?l+1:""}</button></span></div>`;
-  tSkM.innerHTML=SKK.map(k=>row(SKD[k][3],skVal(k,SKM[k]),SKM[k],L0[k],"data-k",k,SKD[k][3],SKM[k]<=0,SKM[k]>=10||skCost(SKM[k]+1)-skCost(SKM[k])>left||(SKM[k]===0&&T<(UNL[k]||1)))).join("")+
-    (LV?`<div class="skg">Ekonomski skilovi</div>`+Object.keys(ECOD).map(k=>row(ECOD[k][0],ecoVal(k,ECM[k]),ECM[k],LV[k],"data-e",k,ECOD[k][0],ECM[k]<=0,ECM[k]>=10||ECM[k]+1>left||(ECM[k]===0&&T<(ECUNL[k]||1)))).join(""):"");
+  tSkM.innerHTML=SKV.map(k=>row(SKD[k][3],skVal(k,SKM[k]),SKM[k],L0[k],"data-k",k,SKD[k][3],SKM[k]<=0,SKM[k]>=10||skCost(SKM[k]+1)-skCost(SKM[k])>left||(SKM[k]===0&&T<(UNL[k]||1)))).join("")+
+    (LV?`<div class="skg">Ekonomski skilovi</div>`+EK.map(k=>row(skName(k),ecoVal(k,ECM[k]),ECM[k],LV[k],"data-e",k,skName(k),ECM[k]<=0,ECM[k]>=10||ECM[k]+1>left||(ECM[k]===0&&T<(ECUNL[k]||1)))).join(""):"");
   skLeft.textContent=`${T>lvNow?`Nivo ${T} (sad ${lvNow}): +${PTS_PER_LVL*(T-lvNow)} poena. `:""}Ostalo ${left} od ${budget} poena. Broj na + je cena sledećeg nivoa.`;
   // kartice poštuju „Najmanji plus dnevno”, isto kao „Predloži najbolje”
   const nm0=NETMIN;NETMIN=plNum(skMin,20);let cur,neu;const B=+bonus.value;try{cur=bestBuild(B);neu=withEco(ECM,()=>withSk(SKM,()=>bestBuild(B)))}finally{NETMIN=nm0}
@@ -1277,7 +1280,7 @@ function skManual(){const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.
     tSkR.innerHTML+=`<tr><td>Iskusni igrači za nivo ${T}: šteta</td>${cell(my0.dmg,mm.dmg,fk,true)}</tr><tr><td>Iskusni igrači za nivo ${T}: saldo</td>${cell(my0.net,mm.net,sg)}</tr>`}
   const inc0=D.firmsTotal+radInc(),inc1=withEco(ECM,()=>D.firmsTotal+radInc());
   tSkR.innerHTML+=`<tr><td>Firme i lični rad dnevno</td>${cell(inc0,inc1,v=>fmt(v,1),false)}</tr>`;
-  skMNote.textContent=`Bonus bitke ${B}%. „Preporuka“ je najbolji build uz plus za te skilove, „Tvoj build“ je ono što si namestio u Probaj svoj build. ${T>lvNow?`Za nivo ${T} se menjaju samo poeni: čin, oprema i cene ostaju kao sad, a skilovi se otključavaju na svom nivou. `:""}Eko skilovi menjaju prihod: Companies dodaje ili oduzima firmu (najslabiju gubiš prvu, nova se računa kao prosečna i treba je otvoriti), Management radnike, a Preduzetništvo i Eko proizvodnja lični rad.`}
+  skMNote.textContent=`Bonus bitke ${B}%. „Preporuka“ je najbolji build uz plus za te skilove, „Tvoj build“ je ono što si namestio u Probaj svoj build. ${T>lvNow?`Za nivo ${T} se menjaju samo poeni: čin, oprema i cene ostaju kao sad, a skilovi se otključavaju na svom nivou. `:""}Eko skilovi menjaju prihod: Companies dodaje ili oduzima firmu (najslabiju gubiš prvu, nova se računa kao prosečna i treba je otvoriti), Management radnike, a Entrepreneurship, Energy i Production lični rad.`}
 tSkM.addEventListener("click",e=>{const b=e.target.closest("button[data-k],button[data-e]");if(!b)return;if(b.dataset.k)SKM[b.dataset.k]+=+b.dataset.d;else ECM[b.dataset.e]+=+b.dataset.d;skManual()});
 skMReset.addEventListener("click",()=>{SKM=null;ECM=null;skLvl.value="";skManual()});
 skLvl.addEventListener("input",skManual);skMin.addEventListener("input",skManual);
@@ -1346,7 +1349,7 @@ plRun.addEventListener("click",async()=>{
   }finally{NETMIN=0;RECK="";plRun.disabled=false}});
 // ---- Plan: isplati li se pomeriti eko skil za nivo gore ili dole ----
 // po nivou (gameConfig.skills): companies +1 firma, entrepreneurship +5 bara (regen 10% na sat), production +3 PP, management +2 radnika
-const ECOD={companies:["Companies",1],entrepreneurship:["Preduzetništvo",5],production:["Eko proizvodnja",3],management:["Management",2]};
+const ECOD={companies:["Companies limit",1],entrepreneurship:["Entrepreneurship",5],production:["Production",3],management:["Management",2]};
 const ecoVal=(k,l)=>({companies:2+l,entrepreneurship:30+5*l,production:10+3*l,management:4+2*l,energy:30+10*l})[k];
 // ---- Ekonomija: najisplativiji proizvod i država po firmi ----
 const CONSTR_=new Set(["limestone","iron","concrete","steel"]);

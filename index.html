@@ -298,7 +298,6 @@ tr.cur td{background:var(--brass-soft)}
       <ul><li>Nalepi link bitke iz igre i klikni „Učitaj", ili izaberi bitku sa naredbom iz liste.</li>
       <li>Izaberi stranu (napad ili odbrana).</li>
       <li>Bonus bitke se računa sam iz igre: patriot, naredba države i MU, MU štab, bunker, baza, saveznik, zakleti neprijatelj i minusi.</li>
-      <li>Bonus naredbe se čita iz igre (visok prioritet 15%, nizak 5%).</li>
       <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se računa sama iz isplata članova tvog MU-a, bez ključa.</li></ul>
       <h3>4. Preporuka</h3>
       <ul><li>Pokazuje build sa najvećom štetom koji te ostavlja u plusu, za izabranu bitku.</li>
@@ -954,8 +953,8 @@ function fort(k,name,lvl,sd){const b=BT.b,f=b?fortShare(b[sd].c):1,n=b?b[sd].n:"
   return[k,`${name}${lvl?" nivo "+lvl:""}${lvl&&f<1?(f?", pola jer si saveznik "+n:", ništa jer nisi građanin ni saveznik "+n):""}`,+((lvl||0)*5*f).toFixed(2)]}
 function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // naredbe daju 15% (gameConfig još piše 10, ali igra daje 15 i u običnoj bitki: Pest 10. 10.)
-  // bonus naredbe zavisi od prioriteta naredbe (high 15%, low 5%), čita se iz battleOrder.getByBattle; bez podatka 15%
-  const ob=b&&b._ordBy&&b._ordBy[BT.side]||{},oc=ob.co||15,om=ob.mo||15;
+  // naredbe države i MU daju po 15%; prioritet naredbe (high/medium/low) je samo oznaka u igri i ne menja bonus (potvrđeno u igri 10. 10.)
+  const oc=15,om=15;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",oc],["mo","Naredba tvog MU",om],["hq",`MU štab nivo ${hq}`,hq*5],
     fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${esc(me.alliance.name)} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
     // gameConfig battle: occupyingYourRegionsMalusPercent −50, lostAttackingRegionMalusPercent −25 (oba se vide u tooltipu bonusa u igri)
@@ -1016,14 +1015,7 @@ function bName(b){return`${b.att.n} protiv ${b.def.n}${b.region?" · "+b.region:
 function sideSeg(){const b=BT.b;side.innerHTML=b?["att","def"].map(k=>`<input type="radio" name="side" id="side-${k}" value="${k}" ${BT.side===k?"checked":""}><label for="side-${k}">${k==="att"?"Napad":"Odbrana"}: ${esc(b[k].n)}</label>`).join(""):""}
 // Vukovi kalkulator ovo menja da ugovore povuče uživo; ovde dolaze iz data.json
 let loadContracts=async b=>{};
-// bonus naredbe iz igre: battleOrder.getByBattle vraća priority (high/medium/low) naredbe tvoje države i MU-a
-const PRI={high:15,medium:10,low:5};
-async function loadOrders(b){if(b._ordBy)return false;const me=D.me||{};b._ordBy={att:{},def:{}};
-  for(const[k,sd]of[["att","attacker"],["def","defender"]]){const L=await api("battleOrder.getByBattle",{battleId:b.id,side:sd},true).catch(()=>[]);
-    (Array.isArray(L)?L:[]).filter(o=>o.isActive!==false).forEach(o=>{const v=PRI[o.priority];if(v==null)return;
-      if(o.country&&o.country===me.country)b._ordBy[k].co=v;if(o.mu&&o.mu===me.mu)b._ordBy[k].mo=v})}
-  return true}
-function pickBattle(b,msg){BT.b=b;loadOrders(b).then(ok=>{if(ok&&BT.b===b){autoChecks();applyChecks();RECK="";render()}}).catch(()=>{});loadContracts(b).then(ch=>{if(ch&&BT.b===b){setBountyFromBattle();render()}}).catch(()=>{});const me=D.me||{};
+function pickBattle(b,msg){BT.b=b;loadContracts(b).then(ch=>{if(ch&&BT.b===b){setBountyFromBattle();render()}}).catch(()=>{});const me=D.me||{};
   BT.side=["att","def"].find(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu))||["att","def"].find(k=>b[k].c===me.country||(me.allies||[]).includes(b[k].c))||"att";
   sideSeg();autoChecks();applyChecks();setBountyFromBattle();bInfo.textContent=msg||`${bName(b)}. Bonus je izračunat iz igre za tvoju stranu.`;bPick.value=b.id;render()}
 function battleList(){const me=D.me||{},L=(D.activeBattles||[]).filter(b=>["att","def"].some(k=>b[k].co.includes(me.country)||b[k].mo.includes(me.mu)));

@@ -957,7 +957,7 @@ function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // bonus naredbe zavisi od prioriteta naredbe (high 15%, low 5%), čita se iz battleOrder.getByBattle; bez podatka 15%
   const ob=b&&b._ordBy&&b._ordBy[BT.side]||{},oc=ob.co||15,om=ob.mo||15;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",oc],["mo","Naredba tvog MU",om],["hq",`MU štab nivo ${hq}`,hq*5],
-    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${esc(me.alliance.name)} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
+    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${esc(me.alliance.name)} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["pact",`Odbrambeni pakt sa ${b?esc(b.def.n):"državom"} (biješ u njenu odbranu)`,b&&(me.pacts||{})[b.def.c]||0],["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
     // gameConfig battle: occupyingYourRegionsMalusPercent −50, lostAttackingRegionMalusPercent −25 (oba se vide u tooltipu bonusa u igri)
     ["occ",`${b?b[BT.side].n:"Ova strana"} drži region tvoje države`,-50],["lost","Napadač je izgubio region iz kog napada",-25]]}
 // bonusi se ne štikliraju: računaju se sami iz bitke i prikazuju kao spisak
@@ -968,7 +968,7 @@ function sumChecks(){return checkDefs().reduce((t,[k,,v])=>t+(CK[k]?v:0),0)}
 function readChecks(){return{...CK}}
 function applyChecks(){if(BT.b)bonus.value=Math.max(-100,Math.min(150,sumChecks()))}
 function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],c=sd.c;
-  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
+  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,pact:BT.side==="def"&&!!(me.pacts||{})[b.def.c]&&b.def.c!==me.country,nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
@@ -1539,10 +1539,10 @@ async function loadUser(name){
       health:sk.health.value,hunger:sk.hunger.value,loot:sk.lootChance.value,rank:sk.attack.militaryRankPercent||0};
     SKL=Object.fromEntries(SKK.map(k=>[k,sk[SKD[k][0]].level||0]));SKOFF=Object.fromEntries(SKK.map(k=>[k,BASE[k]-(SKD[k][1]+SKL[k]*SKD[k][2])]));
     step("Učitavam državu, MU i opremu…");
-    const [cl,mu,eq]=await Promise.all([api("country.getAllCountries"),user.mu?api("mu.getById",{muId:user.mu}).catch(()=>({})):{},api("inventory.fetchCurrentEquipment",{userId:user._id}).catch(()=>null)]);
+    const [cl,mu,eq,dip]=await Promise.all([api("country.getAllCountries"),user.mu?api("mu.getById",{muId:user.mu}).catch(()=>({})):{},api("inventory.fetchCurrentEquipment",{userId:user._id}).catch(()=>null),api("countryDiplomacy.getByCountry",{countryId:user.country}).catch(()=>null)]);
     const countries=Array.isArray(cl)?cl:(cl.items||[]);countries.forEach(c=>CNAME[c._id]=c.name);
     const mine=countries.find(c=>c._id===user.country)||{};
-    const me={id:user._id,username:user.username,country:user.country,countryName:CNAME[user.country]||"",mu:user.mu||null,muName:mu.name||"",hq:(mu.activeUpgradeLevels||{}).headquarters||0,allies:mine.allies||[],wars:mine.warsWith||[],enemy:mine.enemy||null,
+    const me={id:user._id,username:user.username,country:user.country,countryName:CNAME[user.country]||"",mu:user.mu||null,muName:mu.name||"",hq:(mu.activeUpgradeLevels||{}).headquarters||0,allies:mine.allies||[],wars:mine.warsWith||[],enemy:mine.enemy||null,pacts:Object.fromEntries(((dip&&dip.defensivePacts)||[]).map(x=>[x.partner,x.bonusPercent])),
       bar:{hp:sk.health.currentBarValue??null,hpMax:sk.health.value,hpReg:sk.health.hourlyBarRegen||sk.health.value/10,debuffEnd:(user.buffs||{}).debuffEndAt||null,debuff:((user.buffs||{}).debuffCodes||[]).includes("cocain")}};
     // bonus saveza: kao u igri (alliance config): do 10% razvoja sveta +20%, pa -4% za svaki procenat preko, najmanje -20%
     if(mine.allianceId)try{const [al,wd]=await Promise.all([api("alliance.getById",{allianceId:mine.allianceId}),api("gameStat.getWorldDevelopment")]);

@@ -1,10 +1,11 @@
-// Dnevni snimak bogatstva članova MU (zvanični API igre). Pokreće ga GitHub Actions jednom dnevno,
+// Satni snimak bogatstva članova MU (zvanični API igre). Pokreće ga GitHub Actions svakog sata,
 // a rezultat čita kalkulator iz data/wealth.json. Igra daje samo trenutno stanje, pa se istorija pravi ovakvim snimanjem.
 import { readFileSync, writeFileSync } from "node:fs";
 
 const API = "https://api2.warera.io/trpc/";
 const FILE = new URL("../data/wealth.json", import.meta.url);
 const KEEP_DAYS = 120;
+const KEEP_HOURS = 8 * 24; // satni red r: poslednjih 8 dana, za promenu u 24h
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function api(proc, input) {
@@ -38,6 +39,9 @@ for (const id of ids) {
     p.h.push({ d: today, t: rd(w.total), m: rd(w.money), c: rd(w.companies), i: rd(w.items), e: rd(w.equipments), w: rd(w.weapons) });
     p.h.sort((a, b) => (a.d < b.d ? -1 : 1));
     p.h = p.h.slice(-KEEP_DAYS);
+    // satni red: samo ukupna vrednost, vreme je puno UTC vreme snimka
+    p.r = (p.r || []).filter(x => Date.now() - Date.parse(x.ts) < KEEP_HOURS * 36e5);
+    p.r.push({ ts: new Date().toISOString().slice(0, 16) + "Z", t: rd(w.total) });
     done++;
   } catch (e) { failed++; console.error("neuspeh", id, e.message); }
   await sleep(150);

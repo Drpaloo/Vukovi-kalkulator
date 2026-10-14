@@ -89,7 +89,7 @@ table.t th.n{text-align:right}
 .arow .seg label,.arow .seg button{padding:9px 0;width:32px;height:38px;box-sizing:border-box;display:inline-flex;justify-content:center;align-items:center;border-radius:9px}
 .arow .seg label i,.arow .seg button i{width:15px;height:15px;margin:0;border-radius:50%;display:block}
 .arow.all .al{font-weight:600}
-.qrow{display:flex;align-items:center;gap:8px;margin:-2px 0 4px;flex-wrap:wrap}.qrow .ql{flex:0 0 78px;font-size:11px;color:#9aa4b8}.qrow .seg{flex:0 0 auto;gap:4px;flex-wrap:nowrap}.qrow .seg button{padding:3px 10px;height:26px;font-size:12px;border-radius:7px}.qrow .seg button[disabled]{opacity:.4;cursor:default}.qrow .qv{flex:1 1 140px;font-size:11px;color:#9aa4b8;line-height:1.25}
+.qrow{display:flex;align-items:center;gap:8px;margin:-2px 0 4px;flex-wrap:wrap}.qrow .ql{flex:0 0 78px;font-size:11px;color:#9aa4b8}.qrow .seg{flex:0 0 auto;gap:4px;flex-wrap:nowrap}.qrow .seg button{padding:3px 10px;height:26px;font-size:12px;border-radius:7px}.qrow .seg button[hidden]{display:none}.qrow .qv{flex:1 1 140px;font-size:11px;color:#9aa4b8;line-height:1.25}
 .seg button{border:1px solid var(--line);background:var(--bg);color:inherit;font:inherit;cursor:pointer}
 .seg button.on{border-color:var(--brass);background:var(--brass-soft)}
 .q0{color:var(--q0)}.q1{color:var(--q1)}.q2{color:var(--q2)}.q3{color:var(--q3)}.q4{color:var(--q4)}.q5{color:var(--q5)}
@@ -457,7 +457,7 @@ tr.cur td{background:var(--brass-soft)}
   <section class="calc">
     <div class="panel controls" aria-label="Podešavanja">
       <fieldset><legend>Oružje (boja)</legend><div class="seg" id="weap"></div><div class="qrow" id="qrow-weapon"></div></fieldset>
-      <fieldset><legend>Set: boja svakog dela</legend><div class="armset" id="armset"></div><p class="hint" id="qHint" style="margin:6px 0 0">Min / Avg / Max je stat komada u izabranoj boji: donja granica, sredina i gornja granica raspona iz game configa (ne cena). Cena komada prati stat. Ako nosiš komad te boje, računa se tvoj pravi stat i izbor ne važi.</p></fieldset>
+      <fieldset><legend>Set: boja svakog dela</legend><div class="armset" id="armset"></div><p class="hint" id="qHint" style="margin:6px 0 0">Min / Avg / Max je kvalitet komada u izabranoj boji: donja granica, sredina i gornja granica raspona stata iz game configa. Menja i stat i cenu (cena je napisana u svakom redu). „Moj“ se vidi samo za boju koju nosiš i računa tvoj pravi komad; Min / Avg / Max tada računa komad tog kvaliteta, npr. za zamenu.</p></fieldset>
       <input type="checkbox" id="mine" checked hidden><p class="hint" id="mineNote" style="margin:0"></p>
       <fieldset><legend>Municija</legend><div class="seg" id="ammo"></div></fieldset>
       <fieldset><legend>Hrana</legend><div class="seg" id="food"></div></fieldset>
@@ -695,7 +695,8 @@ function scrapBack(r){const m=D.craftMats||FALLBACK.craftMats;return Math.floor(
 function stats(w,a,q,mine){
   // q je jedan kvalitet za sve komade ili objekat sa kvalitetom po komadu
   const Q=sl=>typeof q==="object"&&q?(q[sl]??0.5):q;
-  const P={weapon:piece("weapon",w,Q("weapon"),mine)};SLOTS.forEach(sl=>P[sl]=piece(sl,typeof a==="object"?a[sl]:a,Q(sl),mine));
+  const M=sl=>typeof mine==="object"&&mine?mine[sl]!==false:!!mine;
+  const P={weapon:piece("weapon",w,Q("weapon"),M("weapon"))};SLOTS.forEach(sl=>P[sl]=piece(sl,typeof a==="object"?a[sl]:a,Q(sl),M(sl)));
   let prec=BASE.precision+P.gloves.v, cc=BASE.cc+P.weapon.cc, atk=BASE.attack+P.weapon.atk, cd=BASE.cd+P.helmet.v;
   if(prec>100){atk+=(prec-100)*4;prec=100}
   if(cc>100){cd+=(cc-100)*4;cc=100}
@@ -705,7 +706,7 @@ function stats(w,a,q,mine){
 // najčešća boja među delovima (za naslove); pri izjednačenju uzima nižu
 const armMode=o=>{const n={};SLOTS.forEach(k=>n[o[k]]=(n[o[k]]||0)+1);return+Object.entries(n).sort((x,y)=>y[1]-x[1]||x[0]-y[0])[0][0]};
 function sess(s,w,a,ammo,pmult,health,meals,q){
-  const P=prices(), st=stats(w,a,q,s.mine!=="no"), A=st.prec/100, U=st.cc/100, m=st.cd/100;
+  const P=prices(), st=stats(w,a,q,s.mine==="no"?false:(s.own||true)), A=st.prec/100, U=st.cc/100, m=st.cd/100;
   const at=st.atk*(1+s.bonus/100)*(1+AMMOM[ammo]/100)*pmult*(1+BASE.rank/100);
   const Y=(1-A)*at*.5+A*(1-U)*at+A*U*at*(1+m);
   // igra health po udarcu zaokružuje na 0,1, pa armor radi u stepenicama (47 → 4,6, 48–49 → 4,5 …)
@@ -739,7 +740,7 @@ const dot=i=>`<i class="r${i}"></i>`;
 // naziv opreme obojen u boju retkosti
 const rn=(i,t)=>`<span class="q${+i}">${dot(i)}${t}</span>`;
 seg("weap",Object.fromEntries(WNAME.map((n,i)=>[i,rn(i,n)])));
-armset.innerHTML=`<div class="arow all"><span class="al">Svi delovi</span><div class="seg" id="arAll">${RAR.map((n,i)=>`<button type="button" data-all="${i}" title="${n}" aria-label="Svi delovi: ${n}">${dot(i)}</button>`).join("")}</div></div><div class="qrow" id="qrow-all"></div>`+
+armset.innerHTML=`<div class="arow all"><span class="al">Svi delovi</span><div class="seg" id="arAll">${RAR.map((n,i)=>`<button type="button" data-all="${i}" title="${n}" aria-label="Svi delovi: ${n}">${dot(i)}</button>`).join("")}</div></div>`+
   SLOTS.map(sl=>`<div class="arow"><span class="al">${SLN[sl]}<span class="an" id="an-${sl}"></span></span><div class="seg" id="ar-${sl}">${RAR.map((n,i)=>`<input type="radio" name="ar-${sl}" id="ar-${sl}-${i}" value="${i}"><label for="ar-${sl}-${i}" title="${n}" aria-label="${SLN[sl]}: ${n}">${dot(i)}</label>`).join("")}</div></div><div class="qrow" id="qrow-${sl}"></div>`).join("");
 const armRead=()=>Object.fromEntries(SLOTS.map(sl=>{const c=document.querySelector(`input[name=ar-${sl}]:checked`);return[sl,c?+c.value:null]}));
 function armShow(){const a=armRead();SLOTS.forEach(sl=>{const e=document.getElementById("an-"+sl);if(e)e.textContent=a[sl]==null?"":RAR[a[sl]]});
@@ -772,33 +773,37 @@ let BPMAN=null;
 function bpCheck(){if(BT.b){BPMAN={id:BT.b.id,side:BT.side};bpAuto.hidden=false}
   const v=Math.max(getBP(),getCT());bp.style.borderColor=getBP()>1?"var(--bad)":"";ct.style.borderColor=getCT()>1?"var(--bad)":"";if(v>1){bpHint.dataset.warn=1;bpHint.textContent=`${String(getCT()>1?ct.value:bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
   else if(bpHint.dataset.warn){delete bpHint.dataset.warn;bpHint.textContent=BT.b?"Ugovor i bounty za ovu bitku, ručno izmenjeno. Ostaje dok ne promeniš bitku ili stranu.":"Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0."}}
-// Min / Avg / Max po komadu: koji deo raspona stata te boje računa kalkulator (0, 50, 100%); važi samo za komad koji ne nosiš
-let QSEL=Object.fromEntries(QSL0().map(k=>[k,50]));
-function QSL0(){return["weapon",...SLOTS]}
-try{const q=JSON.parse(localStorage.getItem("vk-q"));if(q)QSL0().forEach(k=>{if([0,50,100].includes(q[k]))QSEL[k]=q[k]})}catch(e){}
-const QBTN=[[0,"Min"],[50,"Avg"],[100,"Max"]];
+// Min / Avg / Max po komadu: koji deo raspona stata te boje računa kalkulator (0, 50, 100%).
+// null = nema izbora: komad koji nosiš u toj boji računa se sa pravim statom, ostali sa sredinom raspona.
+// Izbor Min / Avg / Max važi i za boju koju nosiš: tada se računa komad tog kvaliteta (cena i stat), npr. za zamenu.
+const QSL0=["weapon",...SLOTS];
+let QSEL=Object.fromEntries(QSL0.map(k=>[k,null]));
+try{const q=JSON.parse(localStorage.getItem("vk-q2"));if(q)QSL0.forEach(k=>{if([0,50,100].includes(q[k]))QSEL[k]=q[k]})}catch(e){}
+const QBTN=[[null,"Moj"],[0,"Min"],[50,"Avg"],[100,"Max"]];
 const QSTAT={weapon:"attack",helmet:"crit damage",chest:"armor",pants:"armor",boots:"dodge",gloves:"precision"};
 function qRange(sl,r){return sl==="weapon"?WR[r][0]:SLOTR[sl][r]}
 function qShow(){
   const a=armRead(),w=document.querySelector("input[name=weap]:checked"),G=D.myGear||{};
-  const mk=(id,label,sel,off)=>{const e=document.getElementById(id);if(!e)return null;
-    if(!e.firstChild)e.innerHTML=`<span class="ql">${label}</span><div class="seg">${QBTN.map(([v,n])=>`<button type="button" data-q="${v}">${n}</button>`).join("")}</div><span class="qv"></span>`;
-    e.querySelectorAll("button").forEach(b=>{b.classList.toggle("on",sel!=null&&+b.dataset.q===sel);b.disabled=!!off});return e.querySelector(".qv")};
-  const note=(sl,r)=>{if(r==null)return"";const rg=qRange(sl,r),g=G[sl];
-    if(g&&g.r===r)return sl==="weapon"?`nosiš ovaj komad: attack ${g.atk}, crit ${g.cc}%`:`nosiš ovaj komad: ${QSTAT[sl]} ${g.v}`;
-    const p=piece(sl,r,sl==="weapon"?(APQ?APQ.qs1[sl]:QSEL[sl]/100):(APQ?APQ.qs1[sl]:QSEL[sl]/100),false);
-    const rr=sl==="weapon"?`attack ${rg[0]}–${rg[1]}, crit ${WR[r][1][0]}–${WR[r][1][1]}%`:`${QSTAT[sl]} ${rg[0]}–${rg[1]}`;
-    return `${rr}; računa ${sl==="weapon"?`attack ${fmt(p.atk,1)}, crit ${fmt(p.cc,1)}%`:fmt(p.v,1)}`+(APQ?" (kvalitet bira preporuka)":"")};
   const worn=(sl,r)=>!!(G[sl]&&r!=null&&G[sl].r===r);
-  {const r=w?+w.value:null,v=mk("qrow-weapon","Raspon stata",APQ?null:QSEL.weapon,worn("weapon",r));if(v)v.textContent=note("weapon",r)}
-  SLOTS.forEach(sl=>{const v=mk("qrow-"+sl,"Raspon stata",APQ?null:QSEL[sl],worn(sl,a[sl]));if(v)v.textContent=note(sl,a[sl])});
-  {const all=SLOTS.every(k=>QSEL[k]===QSEL[SLOTS[0]]),v=mk("qrow-all","Svi delovi",APQ||!all?null:QSEL[SLOTS[0]],false);if(v)v.textContent="Min / Avg / Max za ceo set odjednom"}}
-document.addEventListener("click",e=>{const b=e.target.closest(".qrow button[data-q]");if(!b||b.disabled)return;
-  const id=b.closest(".qrow").id.slice(5),v=+b.dataset.q;APQ=null;(id==="all"?SLOTS:[id]).forEach(k=>QSEL[k]=v);
-  try{localStorage.setItem("vk-q",JSON.stringify(QSEL))}catch(x){}render()});
+  // dugme "Moj" postoji samo kad nosiš komad izabrane boje; bez njega je Avg podrazumevan
+  const mk=(id,label,sel,hasOwn)=>{const e=document.getElementById(id);if(!e)return null;
+    if(!e.firstChild)e.innerHTML=`<span class="ql">${label}</span><div class="seg">${QBTN.map(([v,n])=>`<button type="button" data-q="${v}">${n}</button>`).join("")}</div><span class="qv"></span>`;
+    e.querySelectorAll("button").forEach(b=>{const own=b.dataset.q==="null";b.hidden=own&&!hasOwn;
+      b.classList.toggle("on",sel!=null?+b.dataset.q===sel&&!own:own?hasOwn:(!hasOwn&&b.dataset.q==="50"))});return e.querySelector(".qv")};
+  const note=(sl,r)=>{if(r==null)return"";const rg=qRange(sl,r),code=sl==="weapon"?WCODE[r]:sl+(r+1),g=G[sl],forced=QSEL[sl]!=null;
+    const q=APQ?APQ.qs1[sl]:(QSEL[sl]==null?.5:QSEL[sl]/100);
+    if(worn(sl,r)&&!forced&&!APQ)return sl==="weapon"?`nosiš ovaj komad: attack ${g.atk}, crit ${g.cc}%`:`nosiš ovaj komad: ${QSTAT[sl]} ${g.v}`;
+    const p=piece(sl,r,q,false),c=itemCost(code,r,q),wy=way(code,r,q)==="buy"?"kupi":"izradi";
+    const rr=sl==="weapon"?`attack ${rg[0]}–${rg[1]}, crit ${WR[r][1][0]}–${WR[r][1][1]}%`:`${QSTAT[sl]} ${rg[0]}–${rg[1]}`;
+    return `${rr}; računa ${sl==="weapon"?`attack ${fmt(p.atk,1)}, crit ${fmt(p.cc,1)}%`:fmt(p.v,1)}, cena ${fmt(c)} (${wy})`+(APQ?" (kvalitet bira preporuka)":"")};
+  {const r=w?+w.value:null,v=mk("qrow-weapon","Raspon stata",APQ?undefined:QSEL.weapon,worn("weapon",r));if(v)v.textContent=note("weapon",r)}
+  SLOTS.forEach(sl=>{const v=mk("qrow-"+sl,"Raspon stata",APQ?undefined:QSEL[sl],worn(sl,a[sl]));if(v)v.textContent=note(sl,a[sl])});}
+document.addEventListener("click",e=>{const b=e.target.closest(".qrow button[data-q]");if(!b)return;
+  const id=b.closest(".qrow").id.slice(5),v=b.dataset.q==="null"?null:+b.dataset.q;APQ=null;QSEL[id]=v;
+  try{localStorage.setItem("vk-q2",JSON.stringify(QSEL))}catch(x){}render()});
 // APQ: kvalitet po komadu iz preporuke ili koda; briše se čim ručno promeniš oružje, set ili kvalitet
 let APQ=null;
-function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),ct:getCT(),cap:getCap(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}else o.qs1=Object.fromEntries(QSL.map(k=>[k,QSEL[k]/100]));return o}
+function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),ct:getCT(),cap:getCap(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}else{o.qs1=Object.fromEntries(QSL.map(k=>[k,(QSEL[k]??50)/100]));o.own=Object.fromEntries(QSL.map(k=>[k,QSEL[k]==null]))}return o}
 const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
 const sg=x=>(x>=0?"+":"−")+fmt(Math.abs(x));
@@ -927,7 +932,7 @@ function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)retu
   const ticks=Math.floor((now+T*HR)/HR)-Math.floor(now/HR),nextMin=((Math.floor(now/HR)+1)*HR-now)/6e4;
   const ov=Math.max(0,c+r*ticks-M),own=!_PC;if(own)_PC=prices();let L=[];
   try{const P=prices(),q0=s.qs1||(s.q1??50)/100;
-    const ev=(w,a,am,q)=>{const x=sess({...s,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+incBC(x.dmg,s)+x.scrap,out=x.weapon+x.armor+x.ammo;return{w,a,am,x,net:inc-out,inc,out}};
+    const ev=(w,a,am,q)=>{const x=sess({...s,own:undefined,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+incBC(x.dmg,s)+x.scrap,out=x.weapon+x.armor+x.ammo;return{w,a,am,x,net:inc-out,inc,out}};
     for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;L.push(ev(w,a,am,q0))}
     L=L.filter(c=>(selW==null||selW===""||c.w===+selW)&&(selA==null||selA===""||c.a===+selA));L.sort((p,q)=>q.net-p.net);
     // kao u preporuci: ako ima cena po kvalitetu, za prvih nekoliko izbora biraj kvalitet po komadu (najviše plusa za novac)

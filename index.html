@@ -453,8 +453,6 @@ tr.cur td{background:var(--brass-soft)}
     <div class="panel controls" aria-label="Podešavanja">
       <fieldset><legend>Oružje (boja)</legend><div class="seg" id="weap"></div></fieldset>
       <fieldset><legend>Set: boja svakog dela</legend><div class="armset" id="armset"></div></fieldset>
-      <fieldset><legend>Kvalitet opreme, glavna sesija</legend><div class="seg" id="q1"></div>
-        <span class="hint">Statovi u istoj boji idu od najslabijih (min) do najjačih (max).</span></fieldset>
       <input type="checkbox" id="mine" checked hidden><p class="hint" id="mineNote" style="margin:0"></p>
       <fieldset><legend>Municija</legend><div class="seg" id="ammo"></div></fieldset>
       <fieldset><legend>Hrana</legend><div class="seg" id="food"></div></fieldset>
@@ -743,21 +741,22 @@ armset.addEventListener("click",e=>{const b=e.target.closest("button[data-all]")
 seg("ammo",{none:"Bez",light:dot(1)+"Light",ammo:dot(2)+"Ammo",heavy:dot(3)+"Heavy"});
 seg("food",{bread:"Bread",steak:"Steak",fish:"Riba"});
 seg("pill",{yes:"Da",no:"Ne"});
-seg("q1",{0:"Min",50:"Srednje",100:"Max"});
-const KEYS=["weap","ammo","food","pill","q1"];
+const KEYS=["weap","ammo","food","pill"];
+// kvalitet komada kad ga ne bira preporuka (ona bira po komadu): sredina raspona stata u istoj boji
+const QDEF=50;
 // druga sesija (ostatak dana pod debuffom) više ne postoji; polja ostaju samo da stari deljeni kodovi i sačuvana stanja ostanu čitljivi
 const NO2={s2:"no",weap2:"1",armor2:"1",ammo2:"light",q2:50};
 const qName=v=>v<=0?"min":v>=100?"max":"srednji";
 function setState(s){KEYS.forEach(k=>{const r=document.getElementById(k+"-"+s[k]);if(r)r.checked=true});
   {const a=armOf(s);SLOTS.forEach(sl=>{const r=document.getElementById(`ar-${sl}-${typeof a==="object"?a[sl]:a}`);if(r)r.checked=true})}bonus.value=s.bonus;
-  if(s.q1==null){const r=document.getElementById("q1-50");if(r)r.checked=true}mine.checked=true;if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
+  mine.checked=true;if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
 // tekstualno polje da iPhone tastatura sa zarezom radi; zarez i tačka su isto
 function getBP(){const v=parseFloat(String(bp.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
 function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1){bpHint.dataset.warn=1;bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
   else if(bpHint.dataset.warn){delete bpHint.dataset.warn;bpHint.textContent=BT.b?"Ugovor i bounty za ovu bitku, ručno izmenjeno.":"Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0."}}
 // APQ: kvalitet po komadu iz preporuke ili koda; briše se čim ručno promeniš oružje, set ili kvalitet
 let APQ=null;
-function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=+o.q1;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}return o}
+function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}return o}
 const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
 const sg=x=>(x>=0?"+":"−")+fmt(Math.abs(x));
@@ -829,8 +828,8 @@ function bestBuild(bonus,bpo){const own=!_PC;if(own)_PC=prices();try{return best
 let _ty=0;const yld=()=>new Promise(r=>{if(performance.now()-_ty<40)return r();setTimeout(()=>{_ty=performance.now();r()},0)});
 function bestBuild0(bonus,bpo){
   // bez cena po kvalitetu jača oprema izgleda besplatno, pa tad preporuka ne bira kvalitet nego koristi klizače
-  const cs=getState(),QS=hasFit()?[0,50,100]:[cs.q1];
-  const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+mine.checked+"|"+getState().q1+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey()+"|"+NETMIN;if(key===RECK)return RECB;
+  const QS=hasFit()?[0,50,100]:[QDEF];
+  const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+mine.checked+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey()+"|"+NETMIN;if(key===RECK)return RECB;
   // pill menja glavnu sesiju (+60%), pa se svaka varijanta traži posebno
   let best=null;const cands=[];for(const pill of["yes","no"]){const base={...REC,...NO2,bonus,bp:bpv,pill,mine:mine.checked?"yes":"no"};
   const M=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
@@ -966,7 +965,7 @@ function renderRec(){
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
     wear+`<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
-  recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je sa dugmadi Min/Srednje/Max, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
+  recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
 }
 const armText=s=>{const a=armOf(s);return typeof a!=="object"||SLOTS.every(k=>a[k]===a.helmet)?`${SETM[typeof a==="object"?a.helmet:a]} set`:SLOTS.map(k=>`${SLN[k].toLowerCase()} ${RAR[a[k]].toLowerCase()}`).join(", ")};
@@ -979,7 +978,7 @@ function encode(s){return"RB1-"+[s.weap,armCode(s),s.ammo,s.food,s.pill,s.s2,s.w
 function reportLines(){
   const s=getState(),r=calc(s);
   const L=[[`WarEra build · ${D.me.username||"?"}${D.me.muName?" (MU "+D.me.muName+")":""}`,"h"],
-    [`Glavna sesija${s.pill==="yes"?" (pod pill-om)":""}: ${WNAME[+s.weap]}, ${armText(s)}, kvalitet ${qName(s.q1)}, ${AMS[s.ammo]}, ${FDS[s.food]}`,"",+s.weap],
+    [`Glavna sesija${s.pill==="yes"?" (pod pill-om)":""}: ${WNAME[+s.weap]}, ${armText(s)}, kvalitet ${s.qs1?"po komadu":qName(s.q1)}, ${AMS[s.ammo]}, ${FDS[s.food]}`,"",+s.weap],
     [(BT.b?`Bitka: ${BT.b.att.n} protiv ${BT.b.def.n}${BT.b.region?" ("+BT.b.region+")":""}, strana: ${BT.side==="att"?BT.b.att.n:BT.b.def.n} · `:"")+`Bonus bitke: ${s.bonus}% · Ugovor i bounty: ${s.bp.toFixed(2)} na 1k`,""],
     [`Šteta/dan: ${fk(r.dmg)} · ~${fmt(r.h)} udaraca`,"b"],
     [`Saldo/dan: ${sg(r.net)} coins (prihod ${fmt(r.I)}, trošak ${fmt(r.O)}) · trošak na 1k štete: ${perK(r)}`,r.net>=0?"g":"r"],
@@ -1101,7 +1100,7 @@ async function loadLink(){const m=bLink.value.match(/[a-f0-9]{24}/i);if(!m){bInf
   try{const b=await battleById(m[0].toLowerCase());pickBattle(b,b.active?null:`${bName(b)}. Ova bitka je završena, ali bonusi su popunjeni.`)}
   catch(e){BT.b=null;sideSeg();drawChecks(readChecks());bInfo.textContent="Ne mogu da učitam tu bitku. Proveri link ili pomeri bonus ručno."}}
 // isto što i preporuka (i sa i bez pill-a), samo se odmah upiše u „Probaj svoj build“
-function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x={...b.s};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render()}
+function findBest(){RECK="";const b=bestBuild(+bonus.value);if(!b)return;const x={...b.s};setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render()}
 
 function tables(){
   const m=D.craftMats||FALLBACK.craftMats;
@@ -1134,7 +1133,7 @@ let saved=null;
 function onCtl(e){const t=e.target;
   if(t.id&&t.id.startsWith("ck-"))applyChecks();
   if(t.id==="bp")bpCheck();
-  if(["weap","q1"].includes(t.name)||(t.name||"").startsWith("ar-"))APQ=null;
+  if(t.name==="weap"||(t.name||"").startsWith("ar-"))APQ=null;
   if(t.name==="side"){BT.side=t.value;autoChecks();applyChecks();setBountyFromBattle()}
   if(t.id==="bLink"||t.id==="bPick")return;
   try{localStorage.setItem("vk-checks",JSON.stringify(readChecks()))}catch(x){}
@@ -1153,8 +1152,7 @@ guideOpen.addEventListener("click",()=>openShare("guide"));
 shareClose.addEventListener("click",()=>{share.hidden=true});
 repCopy.addEventListener("click",copyText);
 repImg.addEventListener("click",saveImg);
-const qNear=o=>{const v=QSL.reduce((t,k)=>t+o[k],0)/QSL.length*100;return v<25?0:v>75?100:50};
-recApply.addEventListener("click",()=>{if(window._rec){const x={...window._rec};if(x.qs1){x.q1=qNear(x.qs1);x.q2=qNear(x.qs2)}setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render();document.querySelector(".strip").scrollIntoView({behavior:"smooth"})}});
+recApply.addEventListener("click",()=>{if(window._rec){const x={...window._rec};setState(x);APQ=x.qs1?{qs1:x.qs1,qs2:x.qs2}:null;render();document.querySelector(".strip").scrollIntoView({behavior:"smooth"})}});
 function craftPanel(){
   const m=D.craftMats||FALLBACK.craftMats,sP=m.scraps.bid,tP=m.steel.ask,T=craftTiers(),hasAlb=T.some(t=>t.alb!=null);
   craftNote.textContent=`Nasumična izrada daje bilo koji komad te boje: oružje 30%, svaki deo seta 14%, a kvalitet je nasumičan. Vrednost je prosečna tržišna cena onoga što padne`+

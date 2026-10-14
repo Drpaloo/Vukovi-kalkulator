@@ -993,9 +993,14 @@ function renderRec(){
   recLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
     `<div class="in"><h4>Prihod</h4>${ln("Firme",I.firms)}${ln("Tvoj rad",I.rad)}${ln("Case-ovi",I.cases)}${ln("Wooden case",I.wooden)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I,0)}</span></div></div>`;
   // oprema kao pločice: komad, glavni stat, kvalitet i cena
-  const tiles=(x,food)=>{const P=x.st.P,f=v=>fmt(v),qn=p=>p.mine?"tvoj":p.q<0.25?"Min":p.q>0.75?"Max":"Avg";
-    const pc=(sl,code,r2,name,stat)=>{const p=P[sl],c=p.mine?market(code,p.q):itemCost(code,r2,p.q),wy=p.mine?"imaš":way(code,r2,p.q)==="buy"?"kupi":"izradi";
-      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr">${fmt(c,c<100?1:0)}</span><span class="ts">${wy==="izradi"?wy:(wy==="imaš"?"imaš · ":"")+`<a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a>`}</span></div>`};
+  const tiles=(x,food)=>{const P=x.st.P,f=v=>fmt(v);
+    // preporučeni nivo: kvalitet po komadu iz preporuke (0 = Min, 0,5 = Avg, 1 = Max raspona stata); za komad koji nosiš to je nivo za zamenu
+    const lv=q=>Math.abs(q-.5)<.01?"Avg":q<=.01?"Min":q>=.99?"Max":q<.5?"Min–Avg":"Avg–Max";
+    const pc=(sl,code,r2,name,stat)=>{const p=P[sl];
+      if(p.mine){const c=market(code,p.q);   // komad koji nosiš: preporuka nivoa ne važi, pokazujemo gde je tvoj komad u rasponu
+        return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr" title="Tržišna vrednost komada koji već nosiš">vredi ${fmt(c,c<100?1:0)}</span><span class="ts">imaš · nivo <b>${lv(p.q)}</b></span><span class="ts">${stat}</span><span class="ts"><a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a></span></div>`}
+      const rq=typeof x.q==="object"&&x.q?(x.q[sl]??.5):(x.q??.5),c=itemCost(code,r2,rq),wy=way(code,r2,rq)==="buy"?"kupi":"izradi";
+      return`<div class="tile q${r2}"><span class="tn">${name}</span><span class="tm tpr" title="Preporučeno: najviše toliko vredi da potrošiš na ovaj komad">do ${fmt(c,c<100?1:0)}</span><span class="ts">nivo <b>${lv(rq)}</b></span><span class="ts">${stat}</span><span class="ts">${wy==="izradi"?wy:`<a class="tbuy" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri">kupi ↗</a>`}</span></div>`};
     return`<div class="tiles">`+pc("weapon",WCODE[x.w],x.w,WNAME[x.w],`${f(P.weapon.atk)} / ${f(P.weapon.cc)}%`)+
       pc("helmet","helmet"+(x.ar.helmet+1),x.ar.helmet,"Šlem",`+${f(P.helmet.v)}%`)+pc("chest","chest"+(x.ar.chest+1),x.ar.chest,"Grudi",f(P.chest.v))+pc("pants","pants"+(x.ar.pants+1),x.ar.pants,"Pant.",f(P.pants.v))+
       pc("boots","boots"+(x.ar.boots+1),x.ar.boots,"Čizme",f(P.boots.v))+pc("gloves","gloves"+(x.ar.gloves+1),x.ar.gloves,"Ruk.",f(P.gloves.v))+
@@ -1010,7 +1015,7 @@ function renderRec(){
     return`<div class="ldg" style="margin:10px 0 0;grid-template-columns:1fr"><div class="cs"><h4>Dnevno trošenje opreme</h4>`+rows.map(o=>`<div class="ln"><span>${o.name}</span><span>${fmt(o.u*100)}% · ${fmt(o.u,2)} kom · ${fmt(o.c,1)}</span></div>`).join("")+`<div class="ln"><b>Ukupno dnevno</b><b>${fmt(tot,1)} coins</b></div></div></div>`})();
   recSteps.innerHTML=
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
-    wear+`<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
+    wear+`<p class="hint" style="margin:8px 0 0"><b>Cena „do X“ na komadu je preporučen iznos: najviše što vredi da potrošiš na taj komad.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. „Nivo“ je preporučen kvalitet komada (Min, Avg ili Max raspona stata) uz koji build ostaje u plusu; za komad koji već nosiš preporuka ne važi: piše gde je tvoj komad u rasponu i koliko vredi na marketu. ${hasFit()?"Nivo je biran po komadu: najviše štete za uloženi novac uz neto ≥ 0.":"Bez cena po kvalitetu nivo je svuda Avg (podrazumevano), jer ne mogu da izaberem po komadu."} Pretpostavka: cena komada raste linearno sa statom, po prodajama sa marketa. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;

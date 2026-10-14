@@ -393,9 +393,13 @@ tr.cur td{background:var(--brass-soft)}
         <span class="hint" id="bInfo"></span>
         <div class="seg" id="side"></div>
         <div class="checks" id="bChecks"></div>
-        <label for="bp" style="font-size:14px;margin-top:6px">Ugovor i bounty, coins na 1k štete</label>
+        <label for="ct" style="font-size:14px;margin-top:6px">Ugovor, coins na 1k štete (računa se prvi)</label>
+        <input type="text" id="ct" inputmode="decimal" autocomplete="off" placeholder="0">
+        <label for="ctCap" style="font-size:14px;margin-top:6px">Ugovor pokriva još, hiljada štete (prazno = svu štetu)</label>
+        <input type="text" id="ctCap" inputmode="decimal" autocomplete="off" placeholder="prazno">
+        <label for="bp" style="font-size:14px;margin-top:6px">Bounty, coins na 1k štete (računa se posle ugovora)</label>
         <input type="text" id="bp" inputmode="decimal" autocomplete="off" placeholder="0">
-        <span class="hint" id="bpHint"></span>
+        <span class="hint" id="bpHint"></span> <button type="button" id="bpAuto" hidden style="font-size:13px">Vrati automatski</button>
         <details class="adv2"><summary style="cursor:pointer;color:var(--brass);font-size:14px">Napredno: ostali prihodi</summary>
           <div style="display:grid;gap:6px;margin-top:8px">
           <label for="firmMan" style="font-size:14px">Zarada firmi dnevno (prazno = računa API)</label><input type="number" id="firmMan" min="0" step="1" inputmode="decimal">
@@ -723,7 +727,7 @@ function calc(s){
   const S=[a,b].filter(Boolean), sum=k=>S.reduce((t,x)=>t+x[k],0);
   const h=sum("h"),dmg=sum("dmg"),meals=sum("meals");
   const num=(el,d)=>{const v=parseFloat(String(el.value).replace(",","."));return isFinite(v)&&v>=0?v:d};
-  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:woodIn.value!==""?num(woodIn,0):woodAuto(),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:dmg/1000*(s.bp??0)};
+  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:woodIn.value!==""?num(woodIn,0):woodAuto(),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:incBC(dmg,s)};
   const out={weapon:sum("weapon"),armor:sum("armor"),food:meals*P.food[s.food],ammo:sum("ammo"),pill:pill?P.pill:0};
   const I=Object.values(inc).reduce((x,y)=>x+y,0),O=Object.values(out).reduce((x,y)=>x+y,0);
   return{h,meals,dmg,Y:a.Y,st:a.st,aE:a.aE,dE:a.dE,hpHit:a.hpHit,wCost:a.wCost,setCost:a.setCost,s1:a,s2:b,inc,out,I,O,net:I-O};
@@ -757,11 +761,19 @@ function setState(s){KEYS.forEach(k=>{const r=document.getElementById(k+"-"+s[k]
   mine.checked=true;if(s.bp!=null&&isFinite(s.bp))bp.value=s.bp}
 // tekstualno polje da iPhone tastatura sa zarezom radi; zarez i tačka su isto
 function getBP(){const v=parseFloat(String(bp.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
-function bpCheck(){const v=getBP();bp.style.borderColor=v>1?"var(--bad)":"";if(v>1){bpHint.dataset.warn=1;bpHint.textContent=`${String(bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
-  else if(bpHint.dataset.warn){delete bpHint.dataset.warn;bpHint.textContent=BT.b?"Ugovor i bounty za ovu bitku, ručno izmenjeno.":"Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0."}}
+function numF(el){const v=parseFloat(String(el.value).trim().replace(",","."));return isFinite(v)&&v>=0?v:0}
+function getCT(){return numF(ct)}
+// ugovor pokriva prvih ctCap hiljada štete (prazno = svu), ostatak štete plaća bounty
+function getCap(){return String(ctCap.value).trim()===""?Infinity:numF(ctCap)*1000}
+function incBC(dmg,s){const k=s.ct??0,cap=k>0?Math.min(dmg,s.cap??Infinity):0;return cap/1000*k+(dmg-cap)/1000*(s.bp??0)}
+// ručni unos ugovora ili bountyja važi za izabranu bitku i stranu; osvežavanje bitke ga ne prepisuje
+let BPMAN=null;
+function bpCheck(){if(BT.b){BPMAN={id:BT.b.id,side:BT.side};bpAuto.hidden=false}
+  const v=Math.max(getBP(),getCT());bp.style.borderColor=getBP()>1?"var(--bad)":"";ct.style.borderColor=getCT()>1?"var(--bad)":"";if(v>1){bpHint.dataset.warn=1;bpHint.textContent=`${String(getCT()>1?ct.value:bp.value)} coina na svakih 1k štete je mnogo. Bounty i ugovori su obično 0,02 do 0,2. Proveri zarez.`}
+  else if(bpHint.dataset.warn){delete bpHint.dataset.warn;bpHint.textContent=BT.b?"Ugovor i bounty za ovu bitku, ručno izmenjeno. Ostaje dok ne promeniš bitku ili stranu.":"Upiši samo ako bitka plaća ugovor ili bounty. Bez toga ostaje 0."}}
 // APQ: kvalitet po komadu iz preporuke ili koda; briše se čim ručno promeniš oružje, set ili kvalitet
 let APQ=null;
-function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}return o}
+function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),ct:getCT(),cap:getCap(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}return o}
 const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
 const sg=x=>(x>=0?"+":"−")+fmt(Math.abs(x));
@@ -784,7 +796,7 @@ function render(){fixAmmo();armShow();
   const row=(l,v,neg)=>`<tr><td>${l}</td><td>${neg?"−":"+"}${fmt(v,1)}</td></tr>`;
   ledger.innerHTML=`<tr class="sec"><td colspan="2">Prihod</td></tr>`+
     row(firmMan.value===""?"Firme (iz API-ja)":"Firme (upisao si ručno)",r.inc.firms)+row("Tvoj rad (svoja firma i posao kod drugog)",r.inc.rad)+row(`Case-ovi sa pogođenih udaraca (loot ${BASE.loot}%)`,r.inc.cases)+row("Wooden case-ovi",r.inc.wooden)+row("Pool loot iz bitaka",r.inc.pool)+
-    row("Scraps kad se oprema sama rastavi",r.inc.scrap)+row(`Ugovor i bounty (${(s.bp??0).toFixed(3)} na 1k)`,r.inc.bounty)+
+    row("Scraps kad se oprema sama rastavi",r.inc.scrap)+row(`Ugovor ${(s.ct??0).toFixed(3)} + bounty ${(s.bp??0).toFixed(3)} na 1k`,r.inc.bounty)+
     `<tr class="sec"><td colspan="2">Trošak</td></tr>`+row("Habanje oružja",r.out.weapon,1)+row("Habanje seta",r.out.armor,1)+row("Hrana",r.out.food,1)+row("Municija",r.out.ammo,1)+row("Pill",r.out.pill,1)+
     `<tr class="total"><td>Saldo</td><td style="color:${r.net>=0?"var(--good)":"var(--bad)"}">${sg(r.net)}</td></tr>`;
   statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.st.armor)} (${fmt(r.aE*100)}%) · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu. ${armTip(r.st.armor)}.`;
@@ -834,9 +846,9 @@ let _ty=0;const yld=()=>new Promise(r=>{if(performance.now()-_ty<40)return r();s
 function bestBuild0(bonus,bpo){
   // bez cena po kvalitetu jača oprema izgleda besplatno, pa tad preporuka ne bira kvalitet nego koristi klizače
   const QS=hasFit()?[0,50,100]:[QDEF];
-  const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+mine.checked+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey()+"|"+NETMIN;if(key===RECK)return RECB;
+  const bpv=bpo??getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+getCT()+"|"+getCap()+"|"+mine.checked+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+firmKey()+"|"+NETMIN;if(key===RECK)return RECB;
   // pill menja glavnu sesiju (+60%), pa se svaka varijanta traži posebno
-  let best=null;const cands=[];for(const pill of["yes","no"]){const base={...REC,...NO2,bonus,bp:bpv,pill,mine:mine.checked?"yes":"no"};
+  let best=null;const cands=[];for(const pill of["yes","no"]){const base={...REC,...NO2,bonus,bp:bpv,ct:getCT(),cap:getCap(),pill,mine:mine.checked?"yes":"no"};
   const M=[];for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
     const st={...base,weap:String(w),armor:String(a),ammo,food,q1:q},r=calc(st);M.push({st,dmg:r.dmg,net:r.net})}
   // preporuka stoji na granici „u plusu“, pa bi sitna promena cene, bonusa ili bounty-ja prebacivala između skoro istih buildova (pun ljubičasti, pa tank i plavi…).
@@ -890,7 +902,7 @@ function debuffAdvice(s,selW,selA){const B=(D.me||{}).bar;if(!B||B.hp==null)retu
   const ticks=Math.floor((now+T*HR)/HR)-Math.floor(now/HR),nextMin=((Math.floor(now/HR)+1)*HR-now)/6e4;
   const ov=Math.max(0,c+r*ticks-M),own=!_PC;if(own)_PC=prices();let L=[];
   try{const P=prices(),q0=s.qs1||(s.q1??50)/100;
-    const ev=(w,a,am,q)=>{const x=sess({...s,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+x.dmg/1000*(s.bp??0)+x.scrap,out=x.weapon+x.armor+x.ammo;return{w,a,am,x,net:inc-out,inc,out}};
+    const ev=(w,a,am,q)=>{const x=sess({...s,pill:"no"},w,a,am,0.4,ov,0,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+incBC(x.dmg,s)+x.scrap,out=x.weapon+x.armor+x.ammo;return{w,a,am,x,net:inc-out,inc,out}};
     for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;L.push(ev(w,a,am,q0))}
     L=L.filter(c=>(selW==null||selW===""||c.w===+selW)&&(selA==null||selA===""||c.a===+selA));L.sort((p,q)=>q.net-p.net);
     // kao u preporuci: ako ima cena po kvalitetu, za prvih nekoliko izbora biraj kvalitet po komadu (najviše plusa za novac)
@@ -908,11 +920,11 @@ function renderHp(){if(!window.hpBody)return;const B=(D.me||{}).bar;
   const nextT=(Math.floor(now/HR)+1)*HR,n=Math.max(0,Math.ceil((M-c)/r-1e-9)),fullAt=n===0?now:nextT+(n-1)*HR;
   const ticks=Math.floor((now+sl*HR)/HR)-Math.floor(now/HR),lost=Math.max(0,c+r*ticks-M),wake=Math.min(M,c+r*ticks);
   // održiv build: potrošiš samo ono što regen vrati (health regen + hrana), na tvojim skilovima, bez pill-a
-  const st=getState(),key=[JSON.stringify(BASE),st.bonus,getBP(),st.mine,JSON.stringify(OVR),D.updatedAt||"",D.equipAt||"",JSON.stringify(ASK)].join("|");
+  const st=getState(),key=[JSON.stringify(BASE),st.bonus,getBP(),getCT(),getCap(),st.mine,JSON.stringify(OVR),D.updatedAt||"",D.equipAt||"",JSON.stringify(ASK)].join("|");
   if(key!==_hpK||!window._hpB){_hpK=key;const own=!_PC;if(own)_PC=prices();let best=null,bestNet=null;
     try{const P=prices(),meals=Math.floor(BASE.hunger*.1*24),HB=r*24,QS=hasFit()?[0,.5,1]:[(st.q1??50)/100];
       for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const am of Object.keys(AMMOM)){if(!okA(w,am))continue;for(const food of Object.keys(FOODHP))for(const q of QS){
-        const x=sess({...st,pill:"no",food},w,a,am,1,HB,meals,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+x.dmg/1000*(st.bp??getBP())+x.scrap,out=x.weapon+x.armor+x.ammo+x.meals*P.food[food],net=inc-out,o={x,am,food,net,inc,out};
+        const x=sess({...st,pill:"no",food},w,a,am,1,HB,meals,q),inc=x.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+incBC(x.dmg,st)+x.scrap,out=x.weapon+x.armor+x.ammo+x.meals*P.food[food],net=inc-out,o={x,am,food,net,inc,out};
         if(!bestNet||net>bestNet.net)bestNet=o;if(net>=0&&(!best||x.dmg>best.x.dmg))best=o}}}finally{if(own)_PC=null}
     window._hpB=best||bestNet;window._hpOk=!!best}
   const o=window._hpB,hpHit=o?o.x.hpHit:3;
@@ -970,7 +982,7 @@ function renderRec(){
     sess("Glavna sesija · 8h",s.pill==="yes"?"pill na početku":"bez pill-a",r.s1,s.ammo,s.food)+
     wear+`<p class="hint" style="margin:8px 0 0"><b>Broj na komadu je najviše što vredi platiti za njega.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
-  recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}% i ugovor ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
+  recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
 }
 const armText=s=>{const a=armOf(s);return typeof a!=="object"||SLOTS.every(k=>a[k]===a.helmet)?`${SETM[typeof a==="object"?a.helmet:a]} set`:SLOTS.map(k=>`${SLN[k].toLowerCase()} ${RAR[a[k]].toLowerCase()}`).join(", ")};
@@ -984,7 +996,7 @@ function reportLines(){
   const s=getState(),r=calc(s);
   const L=[[`WarEra build · ${D.me.username||"?"}${D.me.muName?" (MU "+D.me.muName+")":""}`,"h"],
     [`Glavna sesija${s.pill==="yes"?" (pod pill-om)":""}: ${WNAME[+s.weap]}, ${armText(s)}, kvalitet ${s.qs1?"po komadu":qName(s.q1)}, ${AMS[s.ammo]}, ${FDS[s.food]}`,"",+s.weap],
-    [(BT.b?`Bitka: ${BT.b.att.n} protiv ${BT.b.def.n}${BT.b.region?" ("+BT.b.region+")":""}, strana: ${BT.side==="att"?BT.b.att.n:BT.b.def.n} · `:"")+`Bonus bitke: ${s.bonus}% · Ugovor i bounty: ${s.bp.toFixed(2)} na 1k`,""],
+    [(BT.b?`Bitka: ${BT.b.att.n} protiv ${BT.b.def.n}${BT.b.region?" ("+BT.b.region+")":""}, strana: ${BT.side==="att"?BT.b.att.n:BT.b.def.n} · `:"")+`Bonus bitke: ${s.bonus}% · Ugovor: ${(s.ct||0).toFixed(2)} + bounty: ${s.bp.toFixed(2)} na 1k`,""],
     [`Šteta/dan: ${fk(r.dmg)} · ~${fmt(r.h)} udaraca`,"b"],
     [`Saldo/dan: ${sg(r.net)} coins (prihod ${fmt(r.I)}, trošak ${fmt(r.O)}) · trošak na 1k štete: ${perK(r)}`,r.net>=0?"g":"r"],
     [`Skilovi: attack ${BASE.attack}, precision ${BASE.precision}, crit ${BASE.cc}/${BASE.cd}, armor ${BASE.armor}, dodge ${BASE.dodge}, health ${BASE.health}, hunger ${BASE.hunger}, loot ${BASE.loot}, rank +${BASE.rank}%`,"m"],
@@ -1042,16 +1054,19 @@ function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
-function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bounty||0,ct=b[BT.side].ct||[];
+function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bounty||0,cts=b[BT.side].ct||[];
   // ugovor ima prioritet: dok je aktivan plaća samo on, a bounty se računa tek kad ugovora nema, istekao je ili je popunjen
   // aktivan je prvi ugovor (po redu dobijanja) koji još nije popunjen; popunjenost se zna samo sa API ključem
-  const act=ct.filter(c=>!c.done).sort((x,y)=>String(x.at).localeCompare(String(y.at)))[0],known=ct.some(c=>c.paid!=null),nd=ct.filter(c=>c.done).length;
+  const act=cts.filter(c=>!c.done).sort((x,y)=>String(x.at).localeCompare(String(y.at)))[0],known=cts.some(c=>c.paid!=null),nd=cts.filter(c=>c.done).length;
   const ctK=act?act.perK:0,ctMin=act?act.min:0;
-  bp.value=+(act?ctK:bo).toFixed(4);
   const left=act&&act.paid!=null?Math.max(0,act.pay-act.paid):null;
+  if(BPMAN&&BPMAN.id===b.id&&BPMAN.side===BT.side){bpAuto.hidden=false;bpHint.innerHTML="Ugovor i bounty za ovu bitku su ručno uneti, osvežavanje ih ne menja. Klikni „Vrati automatski“ da ponovo čita iz igre.";return}
+  BPMAN=null;bpAuto.hidden=true;
+  // ugovor se računa prvi, a kad mu ostatak budžeta (coins ÷ cena na 1k) nestane, ostatak štete plaća bounty
+  document.getElementById("ct").value=act?+ctK.toFixed(4):"";ctCap.value=act&&left!=null&&ctK>0?+(left/ctK).toFixed(1):"";bp.value=+bo.toFixed(4);
   const pend=act&&act.pending?`Aukcija ugovora još traje${act.exp?` (ističe za ${Math.max(0,Math.ceil((Date.parse(act.exp)-Date.now())/6e4))} min)`:""}, tvoj MU vodi ponudu, pa računam ugovor. `:"",pro=act&&act.pro?" Ugovor je samo za profesionalce.":"";
-  if(act)bpHint.innerHTML=`${pend}Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins`:""}), a bounty se tada ne dodaje. Kad se ugovor popuni računa se bounty ${bo.toFixed(3)}.${pro}`;
-  else if(ct.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(ct.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
+  if(act)bpHint.innerHTML=`${pend}Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins, to je oko ${fk(left/ctK*1000)} štete`:""}). ${left!=null?"Posle toga se računa":"Ostatak budžeta se ne zna bez ključa, pa se bounty ne dodaje; kad se ugovor popuni računa se"} bounty ${bo.toFixed(3)}.${pro}`;
+  else if(cts.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(cts.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
   else bpHint.innerHTML=`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
   if(b._at)bpHint.innerHTML+=` <span class="hint">Proveravano u ${new Date(b._at).toLocaleTimeString("sr-Latn",{hour:"2-digit",minute:"2-digit"})}, a kalkulator proverava sam na 5 min.</span>`;
   try{localStorage.setItem("rb-battle",JSON.stringify({id:b.id,side:BT.side}))}catch(e){}}
@@ -1061,7 +1076,7 @@ let _rbBusy=false;
 async function refreshBattleLive(){const cur=BT.b;if(_rbBusy||!cur||!cur.id||document.hidden)return;
   const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
   _rbBusy=true;try{const nb=await battleById(cur.id);if(BT.b!==cur)return;const side=BT.side;
-    if(cur.active&&!nb.active){BT.b=nb;bp.value="0";bInfo.textContent=`${bName(nb)}. Bitka je završena, ugovor i bounty se više ne računaju.`;bpHint.textContent="Bitka je završena, pa ugovor i bounty više ne važe.";render();return}
+    if(cur.active&&!nb.active){BT.b=nb;bp.value="0";ct.value="";ctCap.value="";BPMAN=null;bpAuto.hidden=true;bInfo.textContent=`${bName(nb)}. Bitka je završena, ugovor i bounty se više ne računaju.`;bpHint.textContent="Bitka je završena, pa ugovor i bounty više ne važe.";render();return}
     pickBattle(nb);if(side!==BT.side){BT.side=side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}
   }catch(e){}finally{_rbBusy=false}}
 setInterval(refreshBattleLive,5*60*1000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshBattleLive()});
@@ -1137,12 +1152,13 @@ let saved=null;
 // panel bitke je posle preuređenja van .controls, pa isti slušalac kačimo na oba
 function onCtl(e){const t=e.target;
   if(t.id&&t.id.startsWith("ck-"))applyChecks();
-  if(t.id==="bp")bpCheck();
+  if(t.id==="bp"||t.id==="ct"||t.id==="ctCap")bpCheck();
   if(t.name==="weap"||(t.name||"").startsWith("ar-"))APQ=null;
   if(t.name==="side"){BT.side=t.value;autoChecks();applyChecks();setBountyFromBattle()}
   if(t.id==="bLink"||t.id==="bPick")return;
   try{localStorage.setItem("vk-checks",JSON.stringify(readChecks()))}catch(x){}
   render()}
+bpAuto.addEventListener("click",()=>{BPMAN=null;bpAuto.hidden=true;setBountyFromBattle();render()});
 document.querySelector(".controls").addEventListener("input",onCtl);
 if(!battleP.closest(".controls"))battleP.addEventListener("input",onCtl);
 bLoad.addEventListener("click",loadLink);
@@ -1219,7 +1235,7 @@ skRun.addEventListener("click",async()=>{
     const E=LV?Object.fromEntries(ECK.map(k=>[k,L[k]])):null;
     // pretraga je brza: bez ugovora i bountyja računa samo izabranu bitku i skalira sa (1+bonus); ovo je približno jer najbolja oprema zavisi od bonusa,
     // pa se konačan predlog ispod proverava tačno za svaku bitku (znanje/skilovi-optimizator-bonus-precica.md)
-    const Bs=+bonus.value,v=withEco(E,()=>withSk(L,()=>{if(!getBP()){const b=bestBuild(Bs),d=b?b.r.dmg:0;return B.map(x=>d*(1+x/100)/(1+Bs/100))}return B.map(x=>{const b=bestBuild(x);return b?b.r.dmg:0})}));MEMO.set(key,v);return v};
+    const Bs=+bonus.value,v=withEco(E,()=>withSk(L,()=>{if(!getBP()&&!getCT()){const b=bestBuild(Bs),d=b?b.r.dmg:0;return B.map(x=>d*(1+x/100)/(1+Bs/100))}return B.map(x=>{const b=bestBuild(x);return b?b.r.dmg:0})}));MEMO.set(key,v);return v};
   skRun.disabled=true;skAdvice.textContent="Računam za više bitaka…";_ty=performance.now();
   try{
   const d0=ev(L0);let steps=0;
@@ -1726,7 +1742,7 @@ async function loadUser(name){
     }
     try{saved=JSON.parse(localStorage.getItem("vk-state"))}catch(e){saved=null}
     if(!(saved&&saved.user===user._id&&saved.weap2))saved={...REC,...(CUR||{})};
-    setState(saved);bp.value=0;
+    setState(saved);bp.value=0;ct.value="";ctCap.value="";
     let sc=null;try{sc=JSON.parse(localStorage.getItem("vk-checks"))}catch(e){}
     drawChecks(sc||{pat:true,hq:me.hq>0});applyChecks();
     RECK="";app.hidden=false;topBtns.hidden=false;login.hidden=true;swUser.hidden=false;

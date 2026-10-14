@@ -52,3 +52,13 @@ await test("Elite case: šanse po retkosti iz tooltipa daju 100%", () => {
   assert.equal(Object.values(R).reduce((a, b) => a + b, 0), 100);
 });
 console.log(n + " provera prošlo" + (process.exitCode ? ", ima grešaka" : ""));
+
+// ugovor i bounty: ugovor se računa prvi, bounty tek na štetu posle ugovora
+const incBC = new Function(pick(html, /function incBC\(dmg,s\)\{[^\n]*\}/, "incBC u index.html") + "return incBC")();
+await test("incBC: samo bounty, ugovor bez granice, ugovor sa granicom", () => {
+  assert.equal(incBC(1_000_000, { bp: 0.05 }), 50);
+  assert.equal(incBC(1_000_000, { ct: 0.08, bp: 0.05 }), 80);
+  assert.ok(Math.abs(incBC(1_000_000, { ct: 0.08, bp: 0.05, cap: 600_000 }) - (48 + 20)) < 1e-9);
+  assert.equal(incBC(1_000_000, { ct: 0.08, bp: 0.05, cap: 5_000_000 }), 80);
+  assert.equal(incBC(0, { ct: 0.08, bp: 0.05, cap: 1000 }), 0);
+});

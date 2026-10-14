@@ -1516,6 +1516,7 @@ function poolAuto(dmg){const W=D.week||{},R=W.itemsPerDay>0?W.itemsPerDay:3,v=po
   return v==null?(W.poolPerDay>0?W.poolPerDay:76):v*R}
 function wealthLoad(){const srv=(WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id]&&WSRV.players[(D.me||{}).id].h)||[],m=new Map();srv.forEach(x=>m.set(x.d,x));wealthLoad0().forEach(x=>m.set(x.d,x));return[...m.values()].sort((a,b)=>a.d<b.d?-1:1)}
 async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId:uid}),w=u.stats&&u.stats.wealth;if(!w||!(w.total>0))return;
+  WLIVE=w.total;
   const d=new Date().toISOString().slice(0,10),L=wealthLoad0().filter(x=>x.d!==d);L.push({d,t:w.total,m:w.money,c:w.companies,i:w.items,e:w.equipments,w:w.weapons});L.sort((a,b)=>a.d<b.d?-1:1);
   try{localStorage.setItem(wealthKey(),JSON.stringify(L.slice(-120)))}catch(e){}}catch(e){}
   try{const r=await fetch("data/wealth.json?nc="+Math.floor(Date.now()/36e5));if(r.ok)WSRV=await r.json()}catch(e){}
@@ -1525,12 +1526,11 @@ async function wealthTrack(uid){try{const u=await api("user.getUserById",{userId
   try{const r=await fetch("data/pool.json?nc="+Math.floor(Date.now()/36e5));if(r.ok){POOLD=await r.json();RECK="";try{render()}catch(e){}}}catch(e){}}
 function muWealthCard(){if(!WSRV||!WSRV.players||(D.me||{}).mu!==WSRV.mu)return"";
   const sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
-  const rows=Object.entries(WSRV.players).map(([id,p])=>{const h=p.h||[];if(!h.length)return null;const last=h[h.length-1],t=Date.parse(last.d)/864e5;
-    const ref=h.find(x=>t-Date.parse(x.d)/864e5<=7)||h[0],days=Math.round(t-Date.parse(ref.d)/864e5);return{n:p.n,t:last.t,g:days>0?(last.t-ref.t)/days:null,days,me:id===(D.me||{}).id}}).filter(Boolean).sort((a,b)=>b.t-a.t);
-  if(!rows.length)return"";const tot=rows.reduce((a,r)=>a+r.t,0),tg=rows.reduce((a,r)=>a+(r.g||0),0);
+  const rows=Object.entries(WSRV.players).map(([id,p])=>{const h=p.h||[];if(!h.length)return null;const r=p.r||[],now=r.length?r[r.length-1].t:h[h.length-1].t,x=w24(r,now);return{n:p.n,t:now,g:x?x.d:null,me:id===(D.me||{}).id}}).filter(Boolean).sort((a,b)=>b.t-a.t);
+  if(!rows.length)return"";const tot=rows.reduce((a,r)=>a+r.t,0),k=rows.filter(r=>r.g!=null),tg=k.reduce((a,r)=>a+r.g,0);
   const tr=rows.map((r,i)=>`<tr${r.me?' class="cur"':""}><td>${i+1}</td><td>${esc(r.n)}</td><td class="n">${fmt(r.t,0)}</td><td class="n" style="color:var(--${r.g==null?"muted":r.g>=0?"good":"bad"})">${r.g==null?"–":sign(r.g)}</td></tr>`).join("");
-  return`<section class="ovc wide"><h3>${ICO_.ekonomija||""}Bogatstvo MU ${esc(D.me.muName)}</h3><div class="ovn3"><div><div class="bn">${fmt(tot,0)}</div><div class="bl">ukupno, ${rows.length} članova</div></div><div><div class="bn" style="color:var(--${tg>=0?"good":"bad"})">${sign(tg)}</div><div class="bl">rast / dan (7 d)</div></div><div><div class="bn">${fmt(tot/rows.length,0)}</div><div class="bl">prosek po članu</div></div></div>`+
-    `<details class="det"><summary>Svi članovi</summary><div class="tbl-wrap"><table class="t"><tr><th>#</th><th>Igrač</th><th class="n">Ukupna vrednost</th><th class="n">Rast / dan</th></tr>${tr}</table></div><p class="hint" style="margin:6px 0 0">Podaci se snimaju jednom dnevno. Rast je prosek za poslednjih 7 dana. Menja ga i cena na marketu i vrednost firmi.</p></details></section>`}
+  return`<section class="ovc wide"><h3>${ICO_.ekonomija||""}Bogatstvo MU ${esc(D.me.muName)}</h3><div class="ovn3"><div><div class="bn">${fmt(tot,0)}</div><div class="bl">ukupno, ${rows.length} članova</div></div><div><div class="bn" style="color:var(--${k.length?(tg>=0?"good":"bad"):"muted"})">${k.length?sign(tg):"–"}</div><div class="bl">poslednja 24h</div></div><div><div class="bn">${fmt(tot/rows.length,0)}</div><div class="bl">prosek po članu</div></div></div>`+
+    `<details class="det"><summary>Svi članovi</summary><div class="tbl-wrap"><table class="t"><tr><th>#</th><th>Igrač</th><th class="n">Ukupna vrednost</th><th class="n">24h</th></tr>${tr}</table></div><p class="hint" style="margin:6px 0 0">Snimak je satni. Promena u 24h menja se i sa cenama na marketu i vrednošću firmi, pa nije čist profit.</p></details></section>`}
 // uživo: satni snimak je osnova, a pri otvaranju (i na 10 minuta dok je stranica otvorena) čitamo trenutne zbirove članova i dodajemo razliku u današnji dan
 async function dmgLive(){if(!DSRV||(D.me||{}).mu!==DSRV.mu||document.hidden)return;if(Date.now()-(DSRV._lt||0)<3e5)return;DSRV._lt=Date.now();
   const day=new Date().toISOString().slice(0,10),ids=Object.keys(DSRV.players);
@@ -1551,19 +1551,22 @@ function muDamageCard(){if(!DSRV||!DSRV.players||(D.me||{}).mu!==DSRV.mu)return"
     `<div class="dg">${cells}</div><p class="hint" style="margin:4px 0 8px">Prosek poslednjih ${L30.length} dana: <b>${M(avg)}</b> dnevno</p>`+
     `<div class="ovn3"><div><div class="bn" style="color:var(--brass)">${fmt(wB,0)}</div><div class="bl">bounty ove nedelje</div></div><div><div class="bn" style="color:var(--brass)">${fmt(ukB,0)}</div><div class="bl">bounty ukupno</div></div><div><div class="bn" style="color:var(--brass)">${fmt(bt[bb]||0,0)}</div><div class="bl">najbolji dan, ${dt(bb)}</div></div></div>`+
     `<p class="hint" style="margin:8px 0 0">Zbir svih ${Object.keys(DSRV.players).length} trenutnih članova. „Ukupno" je od početka igre, a „najbolji dan" iz poslednjih ${ks.length} dana. Snimak je satni, a pri otvaranju se dodaje i trenutno stanje (na 10 minuta dok je stranica otvorena).</p></section>`}
-function wealthCard(){const L=wealthLoad();if(!L.length)return"";const last=L[L.length-1],t=Date.parse(last.d)/864e5;
-  const ref=L.find(x=>t-Date.parse(x.d)/864e5<=7)||L[0],days=Math.round(t-Date.parse(ref.d)/864e5);
-  let pred=null;try{pred=calc(getState()).net}catch(e){}
-  const head=`<h3>${ICO_.ekonomija||""}Bogatstvo</h3>`;
-  if(days<1)return`<section class="ovc ovc2 wide wl">${head}<div class="bn">${fmt(last.t,0)}</div><div class="bl">ukupna vrednost danas</div><div class="bs">Praćenje je počelo danas. Otvori kalkulator svakog dana i pojaviće se grafikon i poređenje sa predviđenim saldom.</div></section>`;
-  const g=(last.t-ref.t)/days,ok=pred!=null,sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
-  const W=300,H=56,vals=L.map(x=>x.t),mn=Math.min(...vals),mx=Math.max(...vals),span=(mx-mn)||1,t0=Date.parse(L[0].d),t1=Date.parse(last.d)||t0+1;
-  const pts=L.map(x=>`${((Date.parse(x.d)-t0)/((t1-t0)||1)*(W-6)+3).toFixed(1)},${(H-4-(x.t-mn)/span*(H-8)).toFixed(1)}`).join(" ");
-  const part=(k,l)=>{const v=(last[k]-ref[k])/days;return`<span>${l} <b style="color:var(--${v>=0?"good":"bad"})">${sign(v)}</b></span>`};
-  return`<section class="ovc ovc2 wide wl">${head}<div class="ovn3"><div><div class="bn">${fmt(last.t,0)}</div><div class="bl">ukupna vrednost</div></div><div><div class="bn" style="color:var(--${g>=0?"good":"bad"})">${sign(g)}</div><div class="bl">stvarno / dan (${days} d)</div></div><div><div class="bn" style="color:var(--${ok&&pred>=0?"good":"bad"})">${ok?sign(pred):"–"}</div><div class="bl">kalkulator / dan</div></div></div>`+
-    `<svg class="wlc" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Ukupna vrednost po danima"><polyline points="${pts}" fill="none" stroke="var(--brass)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`+
-    `<div class="bs wlp">${part("m","gotovina")}${part("c","firme")}${part("i","itemi")}${part("e","oprema")}${part("w","oružje")} <span>dnevno</span></div>`+
-    `<div class="bs">${ok?(g>=0&&pred>=0?"Stvarno i predviđeno su oba u plusu.":g<0&&pred<0?"Stvarno i predviđeno su oba u minusu.":"Stvarno i predviđeno se razilaze u znaku."):""} Bogatstvo menjaju i cene na marketu i vrednost firmi, pa nije isto što i čist dnevni profit.</div></section>`}
+// bogatstvo: igra daje samo trenutno stanje, istoriju pravi naš snimak (data/wealth.json: satni red r i dnevni h)
+// prikazujemo samo promenu u poslednja 24h i grafikon poslednjih 7 dana; dnevni rast nije pouzdan jer menjaju ga cene na marketu i vrednost firmi
+let WLIVE=null;
+function w24(r,now){if(!(now>0)||!r||!r.length)return null;const T=Date.now();let best=null,bd=1e18;
+  for(const x of r){const age=(T-Date.parse(x.ts))/36e5;if(age<20||age>28)continue;const d=Math.abs(age-24);if(d<bd){bd=d;best=x}}
+  return best?{d:now-best.t,age:(T-Date.parse(best.ts))/36e5}:null}
+function wealthCard(){const L=wealthLoad();if(!L.length&&!WLIVE)return"";
+  const me=WSRV&&WSRV.players&&WSRV.players[(D.me||{}).id],last=L[L.length-1],now=WLIVE||(last&&last.t),sign=v=>(v>=0?"+":"−")+fmt(Math.abs(v),0);
+  const x=w24(me&&me.r,now),head=`<h3>${ICO_.ekonomija||""}Bogatstvo</h3>`;
+  const pts0=L.filter(q=>q.d!==new Date().toISOString().slice(0,10)).slice(-6).map(q=>({d:q.d,t:q.t}));if(WLIVE)pts0.push({d:new Date().toISOString().slice(0,10),t:WLIVE});else if(last)pts0.push({d:last.d,t:last.t});
+  let svg="";if(pts0.length>=2){const W=300,H=56,vals=pts0.map(q=>q.t),mn=Math.min(...vals),mx=Math.max(...vals),span=(mx-mn)||1,t0=Date.parse(pts0[0].d),t1=Date.parse(pts0[pts0.length-1].d)||t0+1;
+    const pts=pts0.map(q=>`${((Date.parse(q.d)-t0)/((t1-t0)||1)*(W-6)+3).toFixed(1)},${(H-4-(q.t-mn)/span*(H-8)).toFixed(1)}`).join(" ");
+    svg=`<svg class="wlc" style="height:40px" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Bogatstvo, poslednjih 7 dana"><polyline points="${pts}" fill="none" stroke="var(--brass)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="bs">Poslednjih 7 dana: od ${fmt(mn,0)} do ${fmt(mx,0)}.</div>`}
+  return`<section class="ovc ovc2 wide wl">${head}<div class="bn" style="color:var(--${x?(x.d>=0?"good":"bad"):"muted"})">${x?sign(x.d):"–"}</div><div class="bl">zarada u poslednja 24h (ukupna vrednost ${fmt(now,0)})</div>`+
+    `<div class="bs" style="margin-top:10px"><b>Nedeljni pregled</b></div>${svg}`+
+    `<div class="bs">${x?"":"Još nema snimka starog oko 24h (snimanje je tek počelo, satno). "}Ovo je promena ukupne vrednosti, ne čist profit: menjaju je i cene na marketu i vrednost firmi i opreme.</div></section>`}
 // predviđanje do 50. nivoa (prestiž): najviše XP dnevno, kad se uradi svih 10 misija u svakoj grupi
 // svaka misija daje xp (10 / 50 / 100), a bonus (100 / 500 / 1000) se dobija kad je gotovo 7 od 10 (gameConfig mission.reward, potvrđeno u igri)
 // dnevna nagrada (kalendar od 7 dana) daje 10 XP svaki dan, potvrđeno u igri (gameConfig još piše 50)

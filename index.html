@@ -907,16 +907,20 @@ function bestBuild0(bonus,bpo){
   const res=best?{s:best.st,r:calc(best.st)}:null;
   RECK=key;RECB=res;return res;
 }
-// Burst: šta se najviše isplati kad ispališ celu zalihu (pun health + puna traka gladi, pill). Bira se najveći saldo, a uz njega se pamti i build sa najvećom štetom.
+// Burst: najveća šteta koju dnevni plus pokriva (saldo naleta + dnevni prihod od firmi, rada i wooden case-a >= 0), kao i 8h preporuka.
+// Samo saldo naleta bi uvek birao najjeftiniju opremu, jer nalet nema dnevne prihode. Ako nijedan build ne prolazi, uzima se najveći saldo.
 let BURSTK="",BURSTB=null;
 function bestBurst(bonus){const own=!_PC;if(own)_PC=prices();try{
   const QS=hasFit()?[0,50,100]:[QDEF],bpv=getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+getCT()+"|"+getCap()+"|"+mine.checked+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+poolIn.value;
   if(key===BURSTK)return BURSTB;
-  const base={...REC,...NO2,bonus,bp:bpv,ct:getCT(),cap:getCap(),pill:"yes",burst:true,mine:mine.checked?"yes":"no"};let best=null,maxD=null;
+  const base={...REC,...NO2,bonus,bp:bpv,ct:getCT(),cap:getCap(),pill:"yes",burst:true,mine:mine.checked?"yes":"no"};let best=null,maxD=null,topN=null;
+  const dI=calc({...base,burst:false}).inc,daily=dI.firms+dI.rad+dI.wooden;
   for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
     const st={...base,weap:String(w),armor:String(a),ammo,food,q1:q},r=calc(st);
-    if(!best||r.net>best.r.net)best={s:st,r};if(!maxD||r.dmg>maxD.r.dmg)maxD={s:st,r}}
-  BURSTK=key;BURSTB=best?{...best,maxD}:null;return BURSTB}finally{if(own)_PC=null}}
+    if(!topN||r.net>topN.r.net)topN={s:st,r};if(!maxD||r.dmg>maxD.r.dmg)maxD={s:st,r};
+    if(r.net+daily>=NETMIN&&(!best||r.dmg>best.r.dmg+1||(Math.abs(r.dmg-best.r.dmg)<=1&&r.net>best.r.net)))best={s:st,r}}
+  const fits=!!best;if(!best)best=topN;
+  BURSTK=key;BURSTB=best?{...best,maxD,daily,fits}:null;return BURSTB}finally{if(own)_PC=null}}
 // kvalitet po komadu: za svaki komad probaj 0-100% i zadrži onaj koji daje najviše štete uz saldo u plusu
 const QSTEP=[0,.25,.5,.75,1],QSL=["weapon",...SLOTS];
 function tuneQ(st){let s={...st,qs1:Object.fromEntries(QSL.map(k=>[k,(st.q1??50)/100])),qs2:Object.fromEntries(QSL.map(k=>[k,(st.q2??50)/100]))};
@@ -1055,7 +1059,7 @@ function renderBurst(){
     `<div class="in"><h4>Prihod</h4>${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I,0)}</span></div></div>`;
   burstSteps.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Burst · puna zaliha</span><span class="sm">pill + ${fmt(BASE.health)} health + ${BASE.hunger} obroka</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${window._tiles?window._tiles({...x,ammo:s.ammo},s.food):""}</div>`;
   const m=b.maxD,same=m.s.weap===s.weap&&m.s.armor===s.armor&&m.s.ammo===s.ammo&&m.s.food===s.food&&m.s.q1===s.q1;
-  burstNote.textContent=`Najisplativiji nalet (najveći saldo), uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. Nalet je samo zaliha: 150 health-a plus puna traka gladi, bez regenerisanja, uvek pod pill-om.`+(same?" To je ujedno i build sa najvećom štetom.":` Najveća šteta bi bila ${fk(m.r.dmg)} (${WNAME[+m.s.weap]}, ${SETM[+m.s.armor]} set, ${AMS[m.s.ammo]}, ${FDS[m.s.food]}) sa saldom ${sg(m.r.net)}.`)+` Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji.`;
+  burstNote.textContent=`Najveća šteta koju dnevni plus pokriva (saldo naleta ${sg(r.net)} + dnevni prihod ${fmt(b.daily,0)} ≥ 0)`+(b.fits?"":", ali nijedan build to ne ispunjava, pa je uzet najveći saldo")+`, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. Nalet je samo zaliha: 150 health-a plus puna traka gladi, bez regenerisanja, uvek pod pill-om.`+(same?" To je ujedno i build sa najvećom štetom.":` Bez ograničenja troška najveća šteta bila bi ${fk(m.r.dmg)} (${WNAME[+m.s.weap]}, ${SETM[+m.s.armor]} set, ${AMS[m.s.ammo]}, ${FDS[m.s.food]}) sa saldom ${sg(m.r.net)}.`)+` Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji.`;
 }
 const armText=s=>{const a=armOf(s);return typeof a!=="object"||SLOTS.every(k=>a[k]===a.helmet)?`${SETM[typeof a==="object"?a.helmet:a]} set`:SLOTS.map(k=>`${SLN[k].toLowerCase()} ${RAR[a[k]].toLowerCase()}`).join(", ")};
 const AMS={none:"bez municije",light:"zelena municija",ammo:"obična municija",heavy:"heavy municija"},FDS={bread:"bread",steak:"steak",fish:"riba"};

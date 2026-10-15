@@ -414,6 +414,19 @@ tr.cur td{background:var(--brass-soft)}
         <input type="range" id="bonus" min="-100" max="150" step="0.01" value="70">
       </div>
   </section>
+  <section class="panel" id="burstSec">
+    <div class="eyebrow">Burst</div>
+    <h2 id="burstTitle">Računam…</h2>
+    <div class="nums">
+      <div class="stat"><span class="k">Šteta u naletu</span><span class="v" id="burstDmg">0</span></div>
+      <div class="stat"><span class="k">Saldo dana</span><span class="v" id="burstNet">0</span></div>
+      <div class="stat"><span class="k">Udaraca</span><span class="v" id="burstHits">0</span></div>
+    </div>
+    <div id="burstLedger" class="ldg"></div>
+    <div id="burstSteps" class="rsteps"></div>
+    <details class="det"><summary>Zašto se Burst build razlikuje od 8h</summary><p class="hint" style="margin:6px 0">Burst i 8h su dva odvojena izbora. Oba traže najveću štetu koja ostavlja dnevni saldo u plusu, ali sa različitim brojem udaraca. Burst ima samo zalihu (~250 udaraca), pa oružje manje troši i jači komad se isplati. 8h sesija ima više udaraca, pa jeftinije oružje često pobedi. Burst je jači nalet, a 8h je cela dnevna sesija.</p></details>
+    <p class="hint" id="burstNote" style="margin:0"></p>
+  </section>
   <section class="panel hero" id="rec" aria-live="polite">
     <div class="eyebrow">Preporuka za ovu bitku</div>
     <h2 id="recTitle">Računam…</h2>
@@ -426,18 +439,6 @@ tr.cur td{background:var(--brass-soft)}
     <div id="recSteps" class="rsteps"></div>
     <button id="recApply" type="button" class="btn">Primeni preporuku u kalkulator</button>
     <p class="hint" id="recNote" style="margin:0"></p>
-  </section>
-  <section class="panel" id="burstSec">
-    <div class="eyebrow">Burst</div>
-    <h2 id="burstTitle">Računam…</h2>
-    <div class="nums">
-      <div class="stat"><span class="k">Šteta u naletu</span><span class="v" id="burstDmg">0</span></div>
-      <div class="stat"><span class="k">Saldo dana</span><span class="v" id="burstNet">0</span></div>
-      <div class="stat"><span class="k">Udaraca</span><span class="v" id="burstHits">0</span></div>
-    </div>
-    <div id="burstLedger" class="ldg"></div>
-    <div id="burstSteps" class="rsteps"></div>
-    <p class="hint" id="burstNote" style="margin:0"></p>
   </section>
   <section class="panel" id="hpf" style="display:grid;gap:8px">
     <div class="eyebrow">Kad ti se napuni health</div>

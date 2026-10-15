@@ -432,7 +432,7 @@ tr.cur td{background:var(--brass-soft)}
     <h2 id="burstTitle">Računam…</h2>
     <div class="nums">
       <div class="stat"><span class="k">Šteta u naletu</span><span class="v" id="burstDmg">0</span></div>
-      <div class="stat"><span class="k">Saldo naleta</span><span class="v" id="burstNet">0</span></div>
+      <div class="stat"><span class="k">Saldo dana</span><span class="v" id="burstNet">0</span></div>
       <div class="stat"><span class="k">Udaraca</span><span class="v" id="burstHits">0</span></div>
     </div>
     <div id="burstLedger" class="ldg"></div>
@@ -920,7 +920,7 @@ function bestBurst(bonus){const own=!_PC;if(own)_PC=prices();try{
     if(!topN||r.net>topN.r.net)topN={s:st,r};if(!maxD||r.dmg>maxD.r.dmg)maxD={s:st,r};
     if(r.net+daily>=NETMIN&&(!best||r.dmg>best.r.dmg+1||(Math.abs(r.dmg-best.r.dmg)<=1&&r.net>best.r.net)))best={s:st,r}}
   const fits=!!best;if(!best)best=topN;
-  BURSTK=key;BURSTB=best?{...best,maxD,daily,fits}:null;return BURSTB}finally{if(own)_PC=null}}
+  BURSTK=key;BURSTB=best?{...best,maxD,daily,dI,fits}:null;return BURSTB}finally{if(own)_PC=null}}
 // kvalitet po komadu: za svaki komad probaj 0-100% i zadrži onaj koji daje najviše štete uz saldo u plusu
 const QSTEP=[0,.25,.5,.75,1],QSL=["weapon",...SLOTS];
 function tuneQ(st){let s={...st,qs1:Object.fromEntries(QSL.map(k=>[k,(st.q1??50)/100])),qs2:Object.fromEntries(QSL.map(k=>[k,(st.q2??50)/100]))};
@@ -1054,9 +1054,9 @@ function renderBurst(){
   if(!b){burstTitle.textContent="Nema dovoljno podataka za burst";burstSteps.innerHTML="";burstLedger.innerHTML="";burstDmg.textContent="0";burstNet.textContent="0";burstHits.textContent="0";burstNote.textContent="";return}
   const s=b.s,r=b.r,I=r.inc,O=r.out,x=r.s1,ln=(l,v)=>`<div class="ln"><span>${l}</span><span class="n">${fmt(v,0)}</span></div>`;
   burstTitle.innerHTML=`${rn(+s.weap,WNAME[+s.weap])} i ${rn(+s.armor,SETM[+s.armor])} set · ${AMS[s.ammo]} · ${FDS[s.food]}`;
-  burstDmg.textContent=fk(r.dmg);burstNet.textContent=sg(r.net);burstNet.style.color=r.net>=0?"var(--good)":"var(--bad)";burstHits.textContent="~"+fmt(r.h);
+  burstDmg.textContent=fk(r.dmg);const day=r.net+b.daily;burstNet.textContent=sg(day);burstNet.style.color=day>=0?"var(--good)":"var(--bad)";burstHits.textContent="~"+fmt(r.h);
   burstLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
-    `<div class="in"><h4>Prihod</h4>${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I,0)}</span></div></div>`;
+    `<div class="in"><h4>Prihod</h4>${ln("Firme (dnevno)",b.dI.firms)}${ln("Tvoj rad (dnevno)",b.dI.rad)}${ln("Wooden case (dnevno)",b.dI.wooden)}${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I+b.daily,0)}</span></div></div>`;
   burstSteps.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Burst · puna zaliha</span><span class="sm">pill + ${fmt(BASE.health)} health + ${BASE.hunger} obroka</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${window._tiles?window._tiles({...x,ammo:s.ammo},s.food):""}</div>`;
   const m=b.maxD,same=m.s.weap===s.weap&&m.s.armor===s.armor&&m.s.ammo===s.ammo&&m.s.food===s.food&&m.s.q1===s.q1;
   burstNote.textContent=`Najveća šteta koju dnevni plus pokriva (saldo naleta ${sg(r.net)} + dnevni prihod ${fmt(b.daily,0)} ≥ 0)`+(b.fits?"":", ali nijedan build to ne ispunjava, pa je uzet najveći saldo")+`, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. Nalet je samo zaliha: 150 health-a plus puna traka gladi, bez regenerisanja, uvek pod pill-om.`+(same?" To je ujedno i build sa najvećom štetom.":` Bez ograničenja troška najveća šteta bila bi ${fk(m.r.dmg)} (${WNAME[+m.s.weap]}, ${SETM[+m.s.armor]} set, ${AMS[m.s.ammo]}, ${FDS[m.s.food]}) sa saldom ${sg(m.r.net)}.`)+` Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji.`;

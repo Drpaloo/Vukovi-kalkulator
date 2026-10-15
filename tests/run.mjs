@@ -62,3 +62,13 @@ await test("incBC: samo bounty, ugovor bez granice, ugovor sa granicom", () => {
   assert.equal(incBC(1_000_000, { ct: 0.08, bp: 0.05, cap: 5_000_000 }), 80);
   assert.equal(incBC(0, { ct: 0.08, bp: 0.05, cap: 1000 }), 0);
 });
+
+// Skilovi: predlog optimizatora (traje ~2 min) ne sme da pregazi ono što je korisnik u međuvremenu menjao ili vratio dugmetom
+// Pun scenario u browseru (uživo podaci): znanje/Skilovi-vrati-na-tvoje-skilove-usred-optimizatora.md
+await test("skilovi: svaka ručna izmena i reset podižu SKTOUCH, a upis predloga ga proverava", () => {
+  assert.match(html, /skMReset\.addEventListener\("click",\(\)=>\{SKTOUCH\+\+;SKM=null;/);
+  assert.match(html, /tSkM\.addEventListener\("click",e=>\{[^\n]*SKTOUCH\+\+;if\(b\.dataset\.k\)/);
+  assert.match(html, /skLvl\.addEventListener\("input",\(\)=>\{SKTOUCH\+\+;skManual\(\)\}\)/);
+  assert.match(html, /const touch0=SKTOUCH;/);
+  assert.match(html, /if\(!same&&g>=1\.005&&!touched\)\{SKM=/);
+});

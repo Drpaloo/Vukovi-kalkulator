@@ -1271,7 +1271,7 @@ skRun.addEventListener("click",async()=>{
     // pretraga je brza: bez ugovora i bountyja računa samo izabranu bitku i skalira sa (1+bonus); ovo je približno jer najbolja oprema zavisi od bonusa,
     // pa se konačan predlog ispod proverava tačno za svaku bitku (znanje/skilovi-optimizator-bonus-precica.md)
     const Bs=+bonus.value,v=withEco(E,()=>withSk(L,()=>{if(!getBP()&&!getCT()){const b=bestBuild(Bs),d=b?b.r.dmg:0;return B.map(x=>d*(1+x/100)/(1+Bs/100))}return B.map(x=>{const b=bestBuild(x);return b?b.r.dmg:0})}));MEMO.set(key,v);return v};
-  skRun.disabled=true;skAdvice.textContent="Računam za više bitaka…";_ty=performance.now();
+  const touch0=SKTOUCH;skRun.disabled=true;skAdvice.textContent="Računam za više bitaka…";_ty=performance.now();
   try{
   const d0=ev(L0);let steps=0;
   const climb=async(S,label)=>{let L={...S},g=minGain(ev(L),d0);
@@ -1301,7 +1301,8 @@ skRun.addEventListener("click",async()=>{
   tSk.dataset.done=1;
   {const ec=LV?ECK.reduce((t,k)=>t+skCost(L[k]),0):ecoPts(),en=LV?ECK.filter(k=>L[k]!==L0[k]).map(k=>`${skName(k)} ${L0[k]}→${L[k]}`).join(", "):"";
     SKPLAN=same||g<1.005?null:{L:Object.fromEntries(SKK.map(k=>[k,L[k]])),eco:ec,ecoNote:en};if(SKPLAN&&LV){SKPLAN.E=Object.fromEntries(ECK.map(k=>[k,L[k]]))}}
-  if(!same&&g>=1.005){SKM=Object.fromEntries(SKK.map(k=>[k,L[k]]));if(LV)ECM={...LV,...Object.fromEntries(ECK.map(k=>[k,L[k]]))};skLvl.value="";skManual()}
+  const touched=SKTOUCH!==touch0;
+  if(!same&&g>=1.005&&!touched){SKM=Object.fromEntries(SKK.map(k=>[k,L[k]]));if(LV)ECM={...LV,...Object.fromEntries(ECK.map(k=>[k,L[k]]))};skLvl.value="";skManual()}
   const row=k=>`<tr${L[k]!==L0[k]?' class="cur"':""}><td>${skName(k)}</td><td class="n">${L0[k]}</td><td class="n">${L[k]}${L[k]!==L0[k]?` (${L[k]>L0[k]?"+":""}${L[k]-L0[k]})`:""}</td><td class="n">${skV(k,L0[k])} → ${skV(k,L[k])}</td></tr>`;
   tSk.innerHTML=`<tr><th>Skil</th><th class="n">Sad</th><th class="n">Predlog</th><th class="n">Vrednost</th></tr>`+SKV.map(row).join("")+
     (LV?`<tr><th colspan="4">Ekonomski skilovi</th></tr>`+EKV.filter(k=>ALL.includes(k)).map(row).join(""):"")+
@@ -1316,7 +1317,7 @@ skRun.addEventListener("click",async()=>{
   skAdvice.innerHTML=(same||g<1.005?`<strong>Ne menjaj skilove.</strong> Nema rasporeda koji je bolji u svim bitkama, a da ti ostane bar ${fmt(NETMIN)} plusa dnevno.`
     :g<1.05?`<strong>Ne isplati se reset.</strong> Najviše što sigurno dobijaš je +${fmt((g-1)*100,1)}% štete u najgoroj bitki, a reset košta ~${fmt(rc)} coins i zaključava skilove na 7 dana. Predlog je samo za ideju gde da staviš sledeće poene.`
     :`<strong>Predlog je bolji u svim bitkama, najmanje +${fmt((g-1)*100,1)}% štete, uz bar ${fmt(NETMIN)} plusa dnevno.</strong> Reset košta 0,5 coina po potrošenom poenu (~${fmt(rc)} coins za tvojih ${spent}) i zaključava skilove na 7 dana.`)+
-    (eco.length&&!same&&g>=1.005?` Uz to: ${esc(eco.join(", "))}.`:"")+(same||g<1.005?"":" Predlog je upisan u skilove, a „Vrati na tvoje skilove” vraća tvoje stanje.")+` Proverio sam ${MEMO.size} rasporeda.`;
+    (eco.length&&!same&&g>=1.005?` Uz to: ${esc(eco.join(", "))}.`:"")+(same||g<1.005?"":touched?" Predlog NIJE upisan u skilove jer si ih u međuvremenu menjao; klikni „Predloži najbolje” ponovo ako ga želiš.":" Predlog je upisan u skilove, a „Vrati na tvoje skilove” vraća tvoje stanje.")+` Proverio sam ${MEMO.size} rasporeda.`;
   }finally{NETMIN=0;RECK="";skRun.disabled=false;planFill();if(SKPLAN)setTimeout(()=>plRun.click(),0)}
 });
 // kartice gore
@@ -1329,7 +1330,7 @@ const KEEPH=new Set(["resetNote","bInfo","hitsNote","mineNote","barNote","repMsg
 document.querySelectorAll(".wrap .hint, .wrap .foot").forEach(h=>{if(KEEPH.has(h.id)||h.closest("summary,label,#share,#login,.why"))return;
   const d=document.createElement("details");d.className="why";d.innerHTML="<summary>objašnjenje ▾</summary>";h.replaceWith(d);d.appendChild(h);if(h.tagName==="P")h.style.margin="0"});
 // ručni raspored skilova: menjaš nivoe i vidiš štetu i saldo
-let SKM=null,ECM=null;
+let SKM=null,ECM=null,SKTOUCH=0; // SKTOUCH: raste na svaku tvoju izmenu skilova, da završen predlog ne pregazi ono što si u međuvremenu menjao
 // eko nivoi menjaju prihod: firme (Companies), radnici (Management) i lični rad (Preduzetništvo, Eko proizvodnja)
 function withEco(E1,fn){const SK=D.econ&&D.econ.sk,LV=SK&&SK.lv;if(!LV||!E1)return fn();
   const firms=[...(D.firms||[])].sort((a,b)=>(a.perDay||0)-(b.perDay||0)),avgF=firms.length?firms.reduce((t,f)=>t+(f.perDay||0),0)/firms.length:0;
@@ -1368,9 +1369,9 @@ function skManual(){const L0=Object.fromEntries(SKK.map(k=>[k,skLv(k)])),free=D.
   const inc0=D.firmsTotal+radInc(),inc1=withEco(ECM,()=>D.firmsTotal+radInc());
   tSkR.innerHTML+=`<tr><td>Firme i lični rad dnevno</td>${cell(inc0,inc1,v=>fmt(v,1),false)}</tr>`;
   skMNote.textContent=`Bonus bitke ${B}%. „Preporuka“ je najbolji build uz plus za te skilove, „Tvoj build“ je ono što si namestio u Probaj svoj build. ${T>lvNow?`Za nivo ${T} se menjaju samo poeni: čin, oprema i cene ostaju kao sad, a skilovi se otključavaju na svom nivou. `:""}Eko skilovi menjaju prihod: Companies dodaje ili oduzima firmu (najslabiju gubiš prvu, nova se računa kao prosečna i treba je otvoriti), Management radnike, a Entrepreneurship, Energy i Production lični rad.`}
-tSkM.addEventListener("click",e=>{const b=e.target.closest("button[data-k],button[data-e]");if(!b)return;if(b.dataset.k)SKM[b.dataset.k]+=+b.dataset.d;else ECM[b.dataset.e]+=+b.dataset.d;skManual()});
-skMReset.addEventListener("click",()=>{SKM=null;ECM=null;skLvl.value="";skManual()});
-skLvl.addEventListener("input",skManual);
+tSkM.addEventListener("click",e=>{const b=e.target.closest("button[data-k],button[data-e]");if(!b)return;SKTOUCH++;if(b.dataset.k)SKM[b.dataset.k]+=+b.dataset.d;else ECM[b.dataset.e]+=+b.dataset.d;skManual()});
+skMReset.addEventListener("click",()=>{SKTOUCH++;SKM=null;ECM=null;skLvl.value="";skManual()});
+skLvl.addEventListener("input",()=>{SKTOUCH++;skManual()});
 // −/+ uz polja: nivo ide od sadašnjeg do 50, najmanji plus po 5 coina (ne ispod 0)
 document.getElementById("tab-skilovi").addEventListener("click",e=>{const b=e.target.closest("button[data-nf]");if(!b)return;e.preventDefault();const el=document.getElementById(b.dataset.nf),d=+b.dataset.d;
   if(el===skLvl){const{now,T}=skTarget(),v=Math.max(now,Math.min(50,T+d));el.value=v===now?"":String(v)}else{el.value=String(Math.max(0,plNum(el,20)+d))}

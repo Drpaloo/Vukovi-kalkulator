@@ -396,7 +396,7 @@ tr.cur td{background:var(--brass-soft)}
         <div class="checks" id="bChecks"></div>
         <label for="ct" style="font-size:14px;margin-top:6px">Ugovor, coins na 1k štete (računa se prvi)</label>
         <input type="text" id="ct" inputmode="decimal" autocomplete="off" placeholder="0">
-        <label for="ctCap" style="font-size:14px;margin-top:6px">Ugovor pokriva još, hiljada štete (prazno = svu štetu)</label>
+        <label for="ctCap" style="font-size:14px;margin-top:6px">Ugovor pokriva još, hiljada štete (ostalo = ukupno minus već odrađeno; prazno = svu štetu)</label>
         <input type="text" id="ctCap" inputmode="decimal" autocomplete="off" placeholder="prazno">
         <label for="bp" style="font-size:14px;margin-top:6px">Bounty, coins na 1k štete (računa se posle ugovora)</label>
         <input type="text" id="bp" inputmode="decimal" autocomplete="off" placeholder="0">
@@ -1100,7 +1100,7 @@ function setBountyFromBattle(){const b=BT.b;if(!b)return;const bo=b[BT.side].bou
   // ugovor se računa prvi, a kad mu ostatak budžeta (coins ÷ cena na 1k) nestane, ostatak štete plaća bounty
   document.getElementById("ct").value=act?+ctK.toFixed(4):"";ctCap.value=act&&left!=null&&ctK>0?+(left/ctK).toFixed(1):"";bp.value=+bo.toFixed(4);
   const pend=act&&act.pending?`Aukcija ugovora još traje${act.exp?` (ističe za ${Math.max(0,Math.ceil((Date.parse(act.exp)-Date.now())/6e4))} min)`:""}, tvoj MU vodi ponudu, pa računam ugovor. `:"",pro=act&&act.pro?" Ugovor je samo za profesionalce.":"";
-  if(act)bpHint.innerHTML=`${pend}Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins, to je oko ${fk(left/ctK*1000)} štete`:""}). ${left!=null?"Posle toga se računa":"Ostatak budžeta se ne zna bez ključa, pa se bounty ne dodaje; kad se ugovor popuni računa se"} bounty ${bo.toFixed(3)}.${pro}`;
+  if(act)bpHint.innerHTML=`${pend}Ova bitka za tvoju stranu: ugovor tvog MU-a <b>${ctK.toFixed(3)}</b> na 1k (važi dok MU ne nabije ${fk(ctMin)} štete${left!=null?`, ostalo još oko ${fmt(left,0)} od ${fmt(act.pay,0)} coins, to je oko ${fk(left/ctK*1000)} štete`:""}). ${left!=null?"Posle toga se računa":`Ukupno ugovor pokriva ${fk(act.pay/ctK*1000)} štete; koliko je već odrađeno ne znam (traži API ključ). Upiši u polje „Ugovor pokriva još“ ostatak iz igre (ukupno minus odrađeno, npr. 3.02M − 2.13M = 890k), pa se ostatak štete računa po bountyju; do tada se bounty ne dodaje. Kad se ugovor popuni računa se`} bounty ${bo.toFixed(3)}.${pro}`;
   else if(cts.length)bpHint.innerHTML=`Ova bitka za tvoju stranu: ugovor tvog MU-a je popunjen (isplaćeno ${fmt(cts.reduce((t,c)=>t+(c.paid||0),0),0)} coins), pa se računa bounty <b>${bo.toFixed(3)}</b>.`;
   else bpHint.innerHTML=`Ova bitka za tvoju stranu: tvoj MU nema ugovor, pa se računa bounty ${bo.toFixed(3)}.`;
   if(b._at)bpHint.innerHTML+=` <span class="hint">Proveravano u ${new Date(b._at).toLocaleTimeString("sr-Latn",{hour:"2-digit",minute:"2-digit"})}, a kalkulator proverava sam na 5 min.</span>`;
@@ -1848,7 +1848,9 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
   if(me.mu&&(b.att.ct.length||b.def.ct.length)){
     try{const mu=await api("mu.getById",{muId:me.mu}),mem=(mu.members||[]).map(m=>typeof m==="string"?m:m.user||m._id||m.id).filter(Boolean).slice(0,100);
       const L=await pool(mem,3,u=>api("battleLootSummary.getByBattleAndUser",{battleId:b.id,userId:u},true).catch(()=>null));
-      const paid=L.reduce((t,x)=>t+((x&&x.totalMoneyFromContract)||0),0);
+      // bez API ključa ili kad ijedan član ne stigne, odrađeno se ne zna: ne sme se računati kao 0 (to je ceo ugovor kao "ostalo")
+      const known=!!KEY&&L.length>0&&L.every(x=>x&&typeof x.totalMoneyFromContract==="number");if(!known)return true;
+      const paid=L.reduce((t,x)=>t+x.totalMoneyFromContract,0);
       // ako MU ima ugovore na obe strane, ne znamo kojoj strani pripada isplata
       const both=b.att.ct.length&&b.def.ct.length;b._paid=paid;
       if(!both)for(const k of["att","def"]){let rest=paid;b[k].ct.slice().sort((x,y)=>String(x.at).localeCompare(String(y.at))).forEach(c=>{if(c.pending){c.paid=0;c.done=false;return}const use=Math.min(rest,c.pay);c.paid=use;c.done=c.pay>0&&use>=c.pay-0.05;rest-=use})}

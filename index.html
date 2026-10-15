@@ -427,6 +427,18 @@ tr.cur td{background:var(--brass-soft)}
     <button id="recApply" type="button" class="btn">Primeni preporuku u kalkulator</button>
     <p class="hint" id="recNote" style="margin:0"></p>
   </section>
+  <section class="panel" id="burstSec">
+    <div class="eyebrow">Burst</div>
+    <h2 id="burstTitle">Računam…</h2>
+    <div class="nums">
+      <div class="stat"><span class="k">Šteta u naletu</span><span class="v" id="burstDmg">0</span></div>
+      <div class="stat"><span class="k">Saldo naleta</span><span class="v" id="burstNet">0</span></div>
+      <div class="stat"><span class="k">Udaraca</span><span class="v" id="burstHits">0</span></div>
+    </div>
+    <div id="burstLedger" class="ldg"></div>
+    <div id="burstSteps" class="rsteps"></div>
+    <p class="hint" id="burstNote" style="margin:0"></p>
+  </section>
   <section class="panel" id="hpf" style="display:grid;gap:8px">
     <div class="eyebrow">Kad ti se napuni health</div>
     <h2 id="hpTitle" style="margin:0">Računam…</h2>
@@ -722,14 +734,16 @@ function sess(s,w,a,ammo,pmult,health,meals,q){
 // boja svakog dela: s.arm ako postoji (stari deljeni izbori ga nemaju, pa važi jedna boja s.armor za ceo set)
 const armOf=s=>s.arm&&SLOTS.every(k=>s.arm[k]!=null)?Object.fromEntries(SLOTS.map(k=>[k,+s.arm[k]])):+s.armor;
 function calc(s){
-  const P=prices(),pill=s.pill==="yes";
+  const P=prices(),pill=s.burst||s.pill==="yes";
   const m1=BASE.hunger+Math.floor(BASE.hunger*.1*8);
-  const a=sess(s,+s.weap,armOf(s),s.ammo,pill?1.6:1,BASE.health*1.8,m1,s.qs1||(s.q1??50)/100);
+  // burst: samo zaliha, pun health (bez regenerisanja) i puna traka gladi (hunger obroka), uvek pod pill-om
+  const a=s.burst?sess(s,+s.weap,armOf(s),s.ammo,1.6,BASE.health,BASE.hunger,s.qs1||(s.q1??50)/100):sess(s,+s.weap,armOf(s),s.ammo,pill?1.6:1,BASE.health*1.8,m1,s.qs1||(s.q1??50)/100);
   const b=null; // druga sesija ne postoji; ostatak health-a objašnjava odeljak Pill debuff / preliv
   const S=[a,b].filter(Boolean), sum=k=>S.reduce((t,x)=>t+x[k],0);
   const h=sum("h"),dmg=sum("dmg"),meals=sum("meals");
   const num=(el,d)=>{const v=parseFloat(String(el.value).replace(",","."));return isFinite(v)&&v>=0?v:d};
-  const inc={firms:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:woodIn.value!==""?num(woodIn,0):woodAuto(),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:incBC(dmg,s)};
+  // u burstu nema dnevnih prihoda (firme, rad, wooden case), samo ono što donese sam naleti
+  const inc={firms:s.burst?0:firmMan.value===""?D.firmsTotal:num(firmMan,D.firmsTotal),rad:s.burst?0:radInc(),cases:sum("landed")*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2),wooden:s.burst?0:woodIn.value!==""?num(woodIn,0):woodAuto(),pool:poolIn.value!==""?num(poolIn,0):poolAuto(dmg),scrap:sum("scrap"),bounty:incBC(dmg,s)};
   const out={weapon:sum("weapon"),armor:sum("armor"),food:meals*P.food[s.food],ammo:sum("ammo"),pill:pill?P.pill:0};
   const I=Object.values(inc).reduce((x,y)=>x+y,0),O=Object.values(out).reduce((x,y)=>x+y,0);
   return{h,meals,dmg,Y:a.Y,st:a.st,aE:a.aE,dE:a.dE,hpHit:a.hpHit,wCost:a.wCost,setCost:a.setCost,s1:a,s2:b,inc,out,I,O,net:I-O};
@@ -832,7 +846,7 @@ function render(){fixAmmo();armShow();qShow();
   statNote.textContent=`Glavna sesija: ${fmt(r.s1.h)} udaraca po ${fmt(r.s1.Y)} = ${fk(r.s1.dmg)}`+`. Glavni build: attack ${fmt(r.st.atk)} · precision ${fmt(r.st.prec)}% · crit ${fmt(r.st.cc)}% / ${fmt(r.st.cd)}% · armor ${fmt(r.st.armor)} (${fmt(r.aE*100)}%) · dodge ${fmt(r.dE*100)}% · ${fmt(r.hpHit,2)} health po udarcu. ${armTip(r.st.armor)}.`;
   gear(r);
   compare(s);
-  renderRec();renderHp();renderDebuff();
+  renderRec();try{renderBurst()}catch(e){console.error(e)}renderHp();renderDebuff();
   if(window.tSkM&&!document.getElementById("tab-skilovi").hidden)skManual();
 }
 function gear(r){
@@ -893,6 +907,16 @@ function bestBuild0(bonus,bpo){
   const res=best?{s:best.st,r:calc(best.st)}:null;
   RECK=key;RECB=res;return res;
 }
+// Burst: šta se najviše isplati kad ispališ celu zalihu (pun health + puna traka gladi, pill). Bira se najveći saldo, a uz njega se pamti i build sa najvećom štetom.
+let BURSTK="",BURSTB=null;
+function bestBurst(bonus){const own=!_PC;if(own)_PC=prices();try{
+  const QS=hasFit()?[0,50,100]:[QDEF],bpv=getBP(),key=JSON.stringify(BASE)+"|"+bonus+"|"+bpv+"|"+getCT()+"|"+getCap()+"|"+mine.checked+"|"+JSON.stringify(OVR)+"|"+(D.updatedAt||"")+"|"+poolIn.value;
+  if(key===BURSTK)return BURSTB;
+  const base={...REC,...NO2,bonus,bp:bpv,ct:getCT(),cap:getCap(),pill:"yes",burst:true,mine:mine.checked?"yes":"no"};let best=null,maxD=null;
+  for(let w=0;w<6;w++)for(let a=0;a<6;a++)for(const ammo in AMMOM)for(const food in FOODHP)for(const q of QS){if(!okA(w,ammo))continue;
+    const st={...base,weap:String(w),armor:String(a),ammo,food,q1:q},r=calc(st);
+    if(!best||r.net>best.r.net)best={s:st,r};if(!maxD||r.dmg>maxD.r.dmg)maxD={s:st,r}}
+  BURSTK=key;BURSTB=best?{...best,maxD}:null;return BURSTB}finally{if(own)_PC=null}}
 // kvalitet po komadu: za svaki komad probaj 0-100% i zadrži onaj koji daje najviše štete uz saldo u plusu
 const QSTEP=[0,.25,.5,.75,1],QSL=["weapon",...SLOTS];
 function tuneQ(st){let s={...st,qs1:Object.fromEntries(QSL.map(k=>[k,(st.q1??50)/100])),qs2:Object.fromEntries(QSL.map(k=>[k,(st.q2??50)/100]))};
@@ -1019,6 +1043,19 @@ function renderRec(){
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
   recNote.textContent=`Najveća šteta koja ti ostavlja plus, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. ${hasFit()?"Kvalitet je biran po komadu: najviše štete za uloženi novac. ":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Računato po današnjim cenama.`;
   window._rec=s;
+}
+// Burst: jedan nalet sa punom zalihom (150 zdravlja + puna traka gladi), pod pill-om; bira se build sa najvećim saldom
+function renderBurst(){
+  const b=bestBurst(+bonus.value);
+  if(!b){burstTitle.textContent="Nema dovoljno podataka za burst";burstSteps.innerHTML="";burstLedger.innerHTML="";burstDmg.textContent="0";burstNet.textContent="0";burstHits.textContent="0";burstNote.textContent="";return}
+  const s=b.s,r=b.r,I=r.inc,O=r.out,x=r.s1,ln=(l,v)=>`<div class="ln"><span>${l}</span><span class="n">${fmt(v,0)}</span></div>`;
+  burstTitle.innerHTML=`${rn(+s.weap,WNAME[+s.weap])} i ${rn(+s.armor,SETM[+s.armor])} set · ${AMS[s.ammo]} · ${FDS[s.food]}`;
+  burstDmg.textContent=fk(r.dmg);burstNet.textContent=sg(r.net);burstNet.style.color=r.net>=0?"var(--good)":"var(--bad)";burstHits.textContent="~"+fmt(r.h);
+  burstLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
+    `<div class="in"><h4>Prihod</h4>${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I,0)}</span></div></div>`;
+  burstSteps.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Burst · puna zaliha</span><span class="sm">pill + ${fmt(BASE.health)} health + ${BASE.hunger} obroka</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${window._tiles?window._tiles({...x,ammo:s.ammo},s.food):""}</div>`;
+  const m=b.maxD,same=m.s.weap===s.weap&&m.s.armor===s.armor&&m.s.ammo===s.ammo&&m.s.food===s.food&&m.s.q1===s.q1;
+  burstNote.textContent=`Najisplativiji nalet (najveći saldo), uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. Nalet je samo zaliha: 150 health-a plus puna traka gladi, bez regenerisanja, uvek pod pill-om.`+(same?" To je ujedno i build sa najvećom štetom.":` Najveća šteta bi bila ${fk(m.r.dmg)} (${WNAME[+m.s.weap]}, ${SETM[+m.s.armor]} set, ${AMS[m.s.ammo]}, ${FDS[m.s.food]}) sa saldom ${sg(m.r.net)}.`)+` Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji.`;
 }
 const armText=s=>{const a=armOf(s);return typeof a!=="object"||SLOTS.every(k=>a[k]===a.helmet)?`${SETM[typeof a==="object"?a.helmet:a]} set`:SLOTS.map(k=>`${SLN[k].toLowerCase()} ${RAR[a[k]].toLowerCase()}`).join(", ")};
 const AMS={none:"bez municije",light:"zelena municija",ammo:"obična municija",heavy:"heavy municija"},FDS={bread:"bread",steak:"steak",fish:"riba"};

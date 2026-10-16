@@ -425,6 +425,7 @@ tr.cur td{background:var(--brass-soft)}
     <div id="burstLedger" class="ldg"></div>
     <div id="burstSteps" class="rsteps"></div>
     <div id="burstCombo" class="sess" hidden></div>
+    <div id="burstFood" class="hint"></div>
     <details class="det"><summary>Zašto se Burst build razlikuje od 8h</summary><p class="hint" style="margin:6px 0">Burst i 8h su dva odvojena izbora. Oba traže najveću štetu koja ostavlja dnevni saldo u plusu, ali sa različitim brojem udaraca. Burst ima samo zalihu (~250 udaraca), pa oružje manje troši i jači komad se isplati. 8h sesija ima više udaraca, pa jeftinije oružje često pobedi. Burst je jači nalet, a 8h je cela dnevna sesija.</p></details>
     <p class="hint" id="burstNote" style="margin:0"></p>
   </section>
@@ -925,14 +926,16 @@ function bestBurst(bonus){const own=!_PC;if(own)_PC=prices();try{
     if(!topN||r.net>topN.r.net)topN={s:st,r};if(!maxD||r.dmg>maxD.r.dmg)maxD={s:st,r};
     if(r.net+daily>=NETMIN&&(!best||r.dmg>best.r.dmg+1||(Math.abs(r.dmg-best.r.dmg)<=1&&r.net>best.r.net)))best={s:st,r}}
   const fits=!!best;if(!best)best=topN;
+  // kao 8h: kvalitet svakog komada se bira posebno (najviše štete dok dnevni plus to pokriva)
+  if(fits&&best&&hasFit()){const s2=tuneQ(best.s,daily);best={s:s2,r:calc(s2)}}
   BURSTK=key;BURSTB=best?{...best,maxD,daily,dI,fits}:null;return BURSTB}finally{if(own)_PC=null}}
 // kvalitet po komadu: za svaki komad probaj 0-100% i zadrži onaj koji daje najviše štete uz saldo u plusu
 const QSTEP=[0,.25,.5,.75,1],QSL=["weapon",...SLOTS];
-function tuneQ(st){let s={...st,qs1:Object.fromEntries(QSL.map(k=>[k,(st.q1??50)/100])),qs2:Object.fromEntries(QSL.map(k=>[k,(st.q2??50)/100]))};
+function tuneQ(st,extra=0){let s={...st,qs1:Object.fromEntries(QSL.map(k=>[k,(st.q1??50)/100])),qs2:Object.fromEntries(QSL.map(k=>[k,(st.q2??50)/100]))};
   let cur=calc(s);
   for(let pass=0;pass<2;pass++)for(const qk of["qs1"])for(const sl of QSL)for(const q of QSTEP){
     const t={...s,[qk]:{...s[qk],[sl]:q}},r=calc(t);
-    if(r.net>=NETMIN&&(r.dmg>cur.dmg+1||(Math.abs(r.dmg-cur.dmg)<=1&&r.net>cur.net))){s=t;cur=r}}
+    if(r.net+extra>=NETMIN&&(r.dmg>cur.dmg+1||(Math.abs(r.dmg-cur.dmg)<=1&&r.net>cur.net))){s=t;cur=r}}
   return s}
 function firmKey(){const f=document.getElementById("firmMan"),w=document.getElementById("woodIn"),p=document.getElementById("poolIn");return[f,w,p].map(e=>e?e.value:"").join(",")}
 function gearWords(r){
@@ -1063,6 +1066,8 @@ function renderBurst(){
   burstLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
     `<div class="in"><h4>Prihod</h4>${ln("Firme (dnevno)",b.dI.firms)}${ln("Tvoj rad (dnevno)",b.dI.rad)}${ln("Wooden case (dnevno)",b.dI.wooden)}${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I+b.daily,0)}</span></div></div>`;
   burstSteps.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Burst · puna zaliha</span><span class="sm">pill + ${fmt(BASE.health)} health + ${BASE.hunger} obroka</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${window._tiles?window._tiles({...x,ammo:s.ammo},s.food):""}</div>`;
+  // hrana jedna pored druge, za isti build: koliko udaraca i koliki je saldo dana sa ribom, steakom i hlebom
+  burstFood.innerHTML="<b>Hrana u burstu (isti build):</b> "+["fish","steak","bread"].map(f=>{const q=calc({...s,food:f});return`${FDS[f]} ${fmt(q.h)} udaraca, ${fk(q.dmg)}, saldo dana ${sg(q.net+b.daily)}`}).join(" · ");
   // Burst pa ostatak 8h sesije: burst troši prvih 150 health-a i 8 obroka, ostatak zalihe (regen i hrana) ide build-om iz 8h, pod istim pill-om
   const b8=bestBuild(+bonus.value),P=prices();
   if(!b8){burstCombo.hidden=true}else{

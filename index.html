@@ -621,8 +621,10 @@ const FALLBACK={updatedAt:null,me:{country:"6873d0ea1758b40e712b5ef7",mu:"69b7a3
 let D={...FALLBACK,week:{hits:0,dmg:0,case1:0,case2:0,bounty:0,contract:0,bountyPer1k:0.05},battles:[],firms:[],firmsTotal:0};
 // wooden case: roll 1x na sat, šansa 25% + Luck (skill lootChance); izvor: tooltip u igri + gameConfig, 13.10.2026 (znanje/proizvodnja-wooden-case-drop.md)
 const WOOD={rollsPerDay:24,baseChance:25,fallbackPrice:6.85};
+// beleška se piše samo kad se ulaz promeni: woodAuto se zove iz calc(), pa je pretraga skilova zvala fmt i DOM stotine hiljada puta
+let _woodK="";
 function woodAuto(){const pr=(D.prices&&D.prices.wooden)||WOOD.fallbackPrice,p=(WOOD.baseChance+BASE.loot)/100,n=WOOD.rollsPerDay*p;
-  const el=document.getElementById("woodNote");if(el)el.textContent=`Računa se: ${WOOD.rollsPerDay} rollova × ${fmt(p*100,0)}% (25% + Luck ${BASE.loot}) = ${fmt(n,1)} case-a dnevno × ${fmt(pr,2)}${D.prices&&D.prices.wooden?"":" (cena nije učitana, uzeta 6,85 od 13.10.)"}. Pretpostavka: skupljaš ih sa mape (max 5 neuzetih).`;
+  const wk=pr+"|"+BASE.loot+"|"+(D.prices&&D.prices.wooden?1:0),el=wk!==_woodK?document.getElementById("woodNote"):null;if(el)_woodK=wk;if(el)el.textContent=`Računa se: ${WOOD.rollsPerDay} rollova × ${fmt(p*100,0)}% (25% + Luck ${BASE.loot}) = ${fmt(n,1)} case-a dnevno × ${fmt(pr,2)}${D.prices&&D.prices.wooden?"":" (cena nije učitana, uzeta 6,85 od 13.10.)"}. Pretpostavka: skupljaš ih sa mape (max 5 neuzetih).`;
   return n*pr}
 let BASE={attack:325,precision:80,cc:40,cd:240,armor:18,dodge:20,health:120,hunger:6,loot:15,rank:23};
 const API="https://api2.warera.io/trpc/";let KEY="",CUR=null;
@@ -819,7 +821,8 @@ document.addEventListener("click",e=>{const b=e.target.closest(".qrow button[dat
 // APQ: kvalitet po komadu iz preporuke ili koda; briše se čim ručno promeniš oružje, set ili kvalitet
 let APQ=null;
 function getState(){const g=n=>document.querySelector(`input[name=${n}]:checked`).value;const o={bonus:+bonus.value,bp:getBP(),ct:getCT(),cap:getCap(),mine:mine.checked?"yes":"no"};KEYS.forEach(k=>o[k]=g(k));o.q1=QDEF;{const a=armRead();o.arm=SLOTS.every(k=>a[k]!=null)?a:null;o.armor=String(o.arm?armMode(o.arm):3)}Object.assign(o,NO2);if(APQ){o.qs1=APQ.qs1;o.qs2=APQ.qs2}else{o.qs1=Object.fromEntries(QSL.map(k=>[k,(QSEL[k]??50)/100]));o.own=Object.fromEntries(QSL.map(k=>[k,QSEL[k]==null]))}return o}
-const fmt=(x,d=0)=>x.toLocaleString("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d});
+// jedan Intl.NumberFormat po broju decimala: toLocaleString pravi novi pri svakom pozivu, a fmt se zove i u pretrazi skilova
+const NFS={};const fmt=(x,d=0)=>(NFS[d]||(NFS[d]=new Intl.NumberFormat("sr-Latn",{minimumFractionDigits:d,maximumFractionDigits:d}))).format(x);
 const fk=x=>x>=1e6?fmt(x/1e6,2)+"M":fmt(x/1e3,0)+"k";
 const sg=x=>(x>=0?"+":"−")+fmt(Math.abs(x));
 const ITEM={steak:"Steak",iron:"Iron",fish:"Riba",cookedFish:"Cooked fish"};

@@ -892,7 +892,8 @@ const hasFit=()=>Object.values(D.equipment||{}).some(e=>e&&e.a!=null);
 // tokom traženja cene su iste, pa ih računamo jednom (inače je ovo najsporiji deo)
 function bestBuild(bonus,bpo){const own=!_PC;if(own)_PC=prices();try{return bestBuild0(bonus,bpo)}finally{if(own)_PC=null}}
 // dugi proračuni puštaju stranicu da diše svakih ~40 ms, da se ne zamrzne
-let _ty=0;const yld=()=>new Promise(r=>{if(performance.now()-_ty<40)return r();setTimeout(()=>{_ty=performance.now();r()},0)});
+// _lock: dok traje pretraga skilova stranica se ne pušta da diše, jer pretraga privremeno menja skilove (withSk) pa bi osvežavanja usred nje menjala predlog
+let _ty=0,_lock=false;const yld=()=>new Promise(r=>{if(_lock||performance.now()-_ty<40)return r();setTimeout(()=>{_ty=performance.now();r()},0)});
 function bestBuild0(bonus,bpo){
   // bez cena po kvalitetu jača oprema izgleda besplatno, pa tad preporuka ne bira kvalitet nego koristi klizače
   const QS=hasFit()?[0,50,100]:[QDEF];
@@ -1333,6 +1334,7 @@ skRun.addEventListener("click",async()=>{
     // pa se konačan predlog ispod proverava tačno za svaku bitku (znanje/skilovi-optimizator-bonus-precica.md)
     const Bs=+bonus.value,v=withEco(E,()=>withSk(L,()=>{if(!getBP()&&!getCT()){const b=bestBuild(Bs),d=b?b.r.dmg:0;return B.map(x=>d*(1+x/100)/(1+Bs/100))}return B.map(x=>{const b=bestBuild(x);return b?b.r.dmg:0})}));MEMO.set(key,v);return v};
   const touch0=SKTOUCH;skRun.disabled=true;skAdvice.textContent="Računam za više bitaka…";_ty=performance.now();
+  await new Promise(r=>setTimeout(r,50));_lock=true; // jedan prolaz da se ispiše poruka, pa pretraga bez prekida
   try{
   const d0=ev(L0);let steps=0;
   const climb=async(S,label)=>{let L={...S},g=minGain(ev(L),d0);
@@ -1379,7 +1381,7 @@ skRun.addEventListener("click",async()=>{
     :g<1.05?`<strong>Ne isplati se reset.</strong> Najviše što sigurno dobijaš je +${fmt((g-1)*100,1)}% štete u najgoroj bitki, a reset košta ~${fmt(rc)} coins i zaključava skilove na 7 dana. Predlog je samo za ideju gde da staviš sledeće poene.`
     :`<strong>Predlog je bolji u svim bitkama, najmanje +${fmt((g-1)*100,1)}% štete, uz bar ${fmt(NETMIN)} plusa dnevno.</strong> Reset košta 0,5 coina po potrošenom poenu (~${fmt(rc)} coins za tvojih ${spent}) i zaključava skilove na 7 dana.`)+
     (eco.length&&!same&&g>=1.005?` Uz to: ${esc(eco.join(", "))}.`:"")+(same||g<1.005?"":touched?" Predlog NIJE upisan u skilove jer si ih u međuvremenu menjao; klikni „Predloži najbolje” ponovo ako ga želiš.":" Predlog je upisan u skilove, a „Vrati na tvoje skilove” vraća tvoje stanje.")+` Proverio sam ${MEMO.size} rasporeda.`;
-  }finally{NETMIN=0;RECK="";skRun.disabled=false;planFill();if(SKPLAN)setTimeout(()=>plRun.click(),0)}
+  }finally{_lock=false;NETMIN=0;RECK="";skRun.disabled=false;planFill();if(SKPLAN)setTimeout(()=>plRun.click(),0)}
 });
 // kartice gore
 function showTab(t){if(t==="skilovi")setTimeout(skManual,0);if(t==="skilovi")planFill();document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));

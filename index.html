@@ -424,6 +424,7 @@ tr.cur td{background:var(--brass-soft)}
     </div>
     <div id="burstLedger" class="ldg"></div>
     <div id="burstSteps" class="rsteps"></div>
+    <div id="burstCombo" class="sess" hidden></div>
     <details class="det"><summary>Zašto se Burst build razlikuje od 8h</summary><p class="hint" style="margin:6px 0">Burst i 8h su dva odvojena izbora. Oba traže najveću štetu koja ostavlja dnevni saldo u plusu, ali sa različitim brojem udaraca. Burst ima samo zalihu (~250 udaraca), pa oružje manje troši i jači komad se isplati. 8h sesija ima više udaraca, pa jeftinije oružje često pobedi. Burst je jači nalet, a 8h je cela dnevna sesija.</p></details>
     <p class="hint" id="burstNote" style="margin:0"></p>
   </section>
@@ -1062,6 +1063,16 @@ function renderBurst(){
   burstLedger.innerHTML=`<div class="cs"><h4>Trošak</h4>${ln("Habanje oružja",O.weapon)}${ln("Habanje seta",O.armor)}${ln("Hrana",O.food)}${ln("Municija",O.ammo)}${ln("Pill",O.pill)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.O,0)}</span></div></div>`+
     `<div class="in"><h4>Prihod</h4>${ln("Firme (dnevno)",b.dI.firms)}${ln("Tvoj rad (dnevno)",b.dI.rad)}${ln("Wooden case (dnevno)",b.dI.wooden)}${ln("Case-ovi",I.cases)}${ln("Pool loot",I.pool)}${ln("Scrap",I.scrap)}${ln("Ugovor ili bounty",I.bounty)}<div class="ln tot"><span>Ukupno</span><span class="n">${fmt(r.I+b.daily,0)}</span></div></div>`;
   burstSteps.innerHTML=`<div class="sess"><div class="sh"><span class="sk">Burst · puna zaliha</span><span class="sm">pill + ${fmt(BASE.health)} health + ${BASE.hunger} obroka</span></div><div class="sw">~${fmt(x.h)} udaraca · ${fk(x.dmg)} štete</div>${window._tiles?window._tiles({...x,ammo:s.ammo},s.food):""}</div>`;
+  // Burst pa ostatak 8h sesije: burst troši prvih 150 health-a i 8 obroka, ostatak zalihe (regen i hrana) ide build-om iz 8h, pod istim pill-om
+  const b8=bestBuild(+bonus.value),P=prices();
+  if(!b8){burstCombo.hidden=true}else{
+    const s8=b8.s,m1=BASE.hunger+Math.floor(BASE.hunger*.1*8),x8=sess(s8,+s8.weap,armOf(s8),s8.ammo,1.6,BASE.health*.8,m1-BASE.hunger,s8.qs1||(s8.q1??50)/100);
+    const dmg=r.dmg+x8.dmg,hits=r.h+x8.h,pv=parseFloat(String(poolIn.value).replace(",","."));
+    const inc=b.daily+I.cases+x8.landed*(BASE.loot/100*P.c1+BASE.loot/1e4*P.c2)+(poolIn.value!==""&&isFinite(pv)&&pv>=0?pv:poolAuto(dmg))+I.scrap+x8.scrap+incBC(dmg,s);
+    const out=r.O+x8.weapon+x8.armor+x8.ammo+x8.meals*P.food[s8.food],net=inc-out;
+    burstCombo.hidden=false;
+    burstCombo.innerHTML=`<div class="sh"><span class="sk">Burst pa ostatak 8h sesije</span><span class="sm">isti pill</span></div><div class="sw">~${fmt(hits)} udaraca · ${fk(dmg)} štete · saldo dana <b style="color:${net>=0?"var(--good)":"var(--bad)"}">${sg(net)}</b></div>`+
+      `<p class="hint" style="margin:6px 0 0">Prvo Burst (${rn(+s.weap,WNAME[+s.weap])}, ${AMS[s.ammo]}, ${FDS[s.food]}): ~${fmt(r.h)} udaraca. Zatim ostatak zalihe (regen health-a i hrana) sa ${rn(+s8.weap,WNAME[+s8.weap])}, ${AMS[s8.ammo]}, ${FDS[s8.food]}: ~${fmt(x8.h)} udaraca. Burst je prvi deo iste 8h zalihe, pa se udarci ne sabiraju sa 8h obračunom ispod.</p>`}
   const m=b.maxD,same=m.s.weap===s.weap&&m.s.armor===s.armor&&m.s.ammo===s.ammo&&m.s.food===s.food&&m.s.q1===s.q1;
   burstNote.textContent=`Najveća šteta koju dnevni plus pokriva (saldo naleta ${sg(r.net)} + dnevni prihod ${fmt(b.daily,0)} ≥ 0)`+(b.fits?"":", ali nijedan build to ne ispunjava, pa je uzet najveći saldo")+`, uz bonus ${s.bonus}%, ugovor ${(s.ct||0).toFixed(3)} i bounty ${s.bp.toFixed(3)} na 1k. Nalet je samo zaliha: 150 health-a plus puna traka gladi, bez regenerisanja, uvek pod pill-om.`+(same?" To je ujedno i build sa najvećom štetom.":` Bez ograničenja troška najveća šteta bila bi ${fk(m.r.dmg)} (${WNAME[+m.s.weap]}, ${SETM[+m.s.armor]} set, ${AMS[m.s.ammo]}, ${FDS[m.s.food]}) sa saldom ${sg(m.r.net)}.`)+` Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji.`;
 }

@@ -499,6 +499,7 @@ tr.cur td{background:var(--brass-soft)}
   <div class="tab" id="tab-oprema" hidden>
   <details class="panel" aria-live="polite">
     <summary>Oprema za tvoj izbor: pravi ili kupi</summary>
+    <p id="gearTotal" style="margin:4px 0 8px"></p>
     <p class="hint" style="margin:4px 0 8px" id="gearNote"></p>
     <div class="tbl-wrap"><table class="t" id="tGear"></table></div>
     <p id="scrapAdvice" style="margin:10px 0 0"></p>
@@ -864,14 +865,21 @@ function gear(r){
     const k=WCODE[x.w];use[k]=use[k]||{n:rn(x.w,WNAME[x.w]),r:x.w,q:0,qq:x.st.P.weapon.q};use[k].q+=x.wUse;
     SLOTS.forEach(sl=>{const ra=x.ar[sl],c=sl+(ra+1);use[c]=use[c]||{n:rn(ra,SLN[sl]),r:ra,q:0,qq:x.st.P[sl].q};use[c].q+=x.aUse});
   });
-  let sNeed=0,stNeed=0,save=0;
+  let sNeed=0,stNeed=0,save=0,totDay=0,totSet=0;
   const rows=Object.entries(use).map(([code,u])=>{const mk=buy(code,u.qq),c=craftCost(u.r),w=way(code,u.r,u.qq),best=bestWay(code,u.r,u.qq);
     if(w==="craft"){sNeed+=u.q*CRAFT[u.r];stNeed+=u.q*2*STEEL[u.r]}
     save+=u.q*Math.abs(mk-c);
-    return`<tr><td>${u.n}</td><td class="n">${fmt(u.q,2)}</td><td class="n">${fmt(mk,1)}</td><td class="n">${fmt(c,1)}</td><td>${w==="craft"?`<span class="chip b">Napravi</span>`:`<a class="chip g" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri" style="text-decoration:none">Kupi ↗</a>`}${w!==best?' <span class="hint">(ručno)</span>':""}</td></tr>`}).join("");
-  tGear.innerHTML=`<tr><th>Komad</th><th class="n">Dnevno</th><th class="n">Market</th><th class="n">Izrada</th><th></th></tr>`+rows;
-  gearNote.textContent=`Izrada tačno tog komada: scraps po ceni po kojoj bi ih prodao (${m.scraps.bid.toFixed(3)}) plus duplo steel-a (${m.steel.ask.toFixed(3)}). Preporuka bira jeftinije za svaki komad.`;
+    const unit=w==="craft"?c:mk;totDay+=u.q*unit;totSet+=unit;
+    return`<tr><td>${u.n}</td><td class="n">${fmt(u.q,2)}</td><td class="n">${fmt(mk,1)}</td><td class="n">${fmt(c,1)}</td><td class="n"><strong>${fmt(u.q*unit,1)}</strong></td><td>${w==="craft"?`<span class="chip b">Napravi</span>`:`<a class="chip g" href="${MKT(code)}" target="_blank" rel="noopener" title="Otvori ovaj komad na marketu u igri" style="text-decoration:none">Kupi ↗</a>`}${w!==best?' <span class="hint">(ručno)</span>':""}</td></tr>`}).join("");
   const sGet=[r.s1,r.s2].filter(Boolean).reduce((t,x)=>t+x.wUse*Math.floor(CRAFT[x.w]/3)+x.aUse*SLOTS.reduce((u,sl)=>u+Math.floor(CRAFT[x.ar[sl]]/3),0),0);
+  const scrapVal=sGet*m.scraps.bid;
+  tGear.innerHTML=`<tr><th>Komad</th><th class="n">Dnevno (kom.)</th><th class="n">Market (po kom.)</th><th class="n">Izrada (po kom.)</th><th class="n">Ukupno dnevno</th><th></th></tr>`+rows+
+    `<tr class="total"><td>Ukupno dnevno (bruto)</td><td></td><td></td><td></td><td class="n"><strong>${fmt(totDay,1)}</strong></td><td></td></tr>`+
+    `<tr><td>Vrednost rastavljenih scraps (~${fmt(sGet)})</td><td></td><td></td><td></td><td class="n">−${fmt(scrapVal,1)}</td><td></td></tr>`+
+    `<tr class="total"><td>Ukupno dnevno (neto)</td><td></td><td></td><td></td><td class="n"><strong>${fmt(totDay-scrapVal,1)}</strong></td><td></td></tr>`+
+    `<tr><td>Ceo set odjednom (po 1 kom. svakog)</td><td></td><td></td><td></td><td class="n">${fmt(totSet,1)}</td><td></td></tr>`;
+  gearTotal.innerHTML=`<strong>Ukupno za dnevni build: ${fmt(totDay,1)} coins</strong> (bruto), <strong>${fmt(totDay-scrapVal,1)} coins</strong> neto posle rastavljanja. Ceo set odjednom: ${fmt(totSet,1)} coins.`;
+  gearNote.textContent=`Izrada tačno tog komada: scraps po ceni po kojoj bi ih prodao (${m.scraps.bid.toFixed(3)}) plus duplo steel-a (${m.steel.ask.toFixed(3)}). Preporuka bira jeftinije za svaki komad.`;
   const diff=sGet-sNeed;
   scrapAdvice.innerHTML=sNeed<0.5?`<strong>Prodaj scraps.</strong> Za ovaj build je sve jeftinije kupiti, a rastavljena oprema ti daje ~${fmt(sGet)} scraps dnevno (~${fmt(sGet*m.scraps.bid,1)} coins).`
     :`<strong>Za izradu ti treba ~${fmt(sNeed)} scraps i ~${fmt(stNeed)} steel dnevno.</strong> Rastavljanje ti vraća ~${fmt(sGet)} scraps, pa ${diff>=0?`ti ostaje ~${fmt(diff)} scraps za prodaju.`:`fali ~${fmt(-diff)} scraps iz pool-a ili sa marketa.`}`;

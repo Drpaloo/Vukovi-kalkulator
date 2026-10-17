@@ -1136,18 +1136,21 @@ function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
   // bonus naredbe zavisi od prioriteta naredbe (high 15%, low 5%), čita se iz battleOrder.getByBattle; bez podatka 15%
   const ob=b&&b._ordBy&&b._ordBy[BT.side]||{},oc=ob.co||15,om=ob.mo||15;
   return[["pat","Patriot (biješ za svoju državu)",20],["co","Naredba tvoje države",oc],["mo","Naredba tvog MU",om],["hq",`MU štab nivo ${hq}`,hq*5],
-    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${esc(me.alliance.name)} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["pact",`Odbrambeni pakt sa ${b?esc(b.def.n):"državom"} (biješ u njenu odbranu)`,b&&(me.pacts||{})[b.def.c]||0],["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
+    fort("bunk","Bunker u regionu",b&&b.bunker,"def"),fort("base","Vojna baza u regionu napada",b&&b.base,"att"),(me.alliance?["ally",`Savez ${esc(me.alliance.name)} (${me.alliance.share}% razvoja sveta)`,me.alliance.bonus]:["ally","Saveznik tvoje države",10]),["pact",`Odbrambeni pakt sa ${b?esc(pactSd().n):"državom"} (biješ u njenu odbranu)`,b&&(me.pacts||{})[pactSd().c]||0],["res",`Otpor, ${b?esc(b.att.n):"zemlja"} ${b&&b.att.c===me.country?"(tvoja država)":"(saveznik)"}`,b&&b.att.c===me.country?RESB.cit:RESB.ally],["sworn",`Protiv zakletog neprijatelja tvoje države${(D.me||{}).countryName?" ("+D.me.countryName+")":""}`,10],["nolink","Region nije povezan sa prestonicom (važi za branioca)",-25],
     // gameConfig battle: occupyingYourRegionsMalusPercent −50, lostAttackingRegionMalusPercent −25 (oba se vide u tooltipu bonusa u igri)
     ["occ",`${b?b[BT.side].n:"Ova strana"} drži region tvoje države`,-50],["lost","Napadač je izgubio region iz kog napada",-25]]}
 // bonusi se ne štikliraju: računaju se sami iz bitke i prikazuju kao spisak
 let CK={};
+// bonus otpora (gameConfig.region): građanin zemlje u otporu 30%, saveznik 15%; 15% potvrđeno u igri 17. 10. (Gabon u bici Moldova otpor)
+let RESB={cit:30,ally:15};
+function pactSd(){const b=BT.b;return b&&BT.side==="att"&&b.type==="resistance"?b.att:b.def}
 function drawChecks(on){CK=on||{};const L=checkDefs().filter(([k,,v])=>CK[k]&&v);
   bChecks.innerHTML=BT.b?(L.length?L.map(([k,l,v])=>`<div class="ckrow">${l}<span class="n">${v>0?"+":""}${v}%</span></div>`).join("")+`<div class="ckrow ckt">Ukupno<span class="n">${+sumChecks().toFixed(2)}%</span></div>`:`<div class="ckrow">Nemaš bonus u ovoj bitki</div>`):""}
 function sumChecks(){return checkDefs().reduce((t,[k,,v])=>t+(CK[k]?v:0),0)}
 function readChecks(){return{...CK}}
 function applyChecks(){if(BT.b)bonus.value=Math.max(-100,Math.min(150,sumChecks()))}
 function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],c=sd.c;
-  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,pact:BT.side==="def"&&!!(me.pacts||{})[b.def.c]&&b.def.c!==me.country,nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
+  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,pact:(BT.side==="def"||b.type==="resistance")&&!!(me.pacts||{})[pactSd().c]&&pactSd().c!==me.country,res:b.type==="resistance"&&BT.side==="att"&&(c===me.country||(me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)):(me.allies||[]).includes(c))),nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
@@ -1196,7 +1199,7 @@ setInterval(refreshPrices,5*60*1000);document.addEventListener("visibilitychange
 function restoreBattle(){let x=null;try{x=JSON.parse(localStorage.getItem("rb-battle"))}catch(e){}if(!x)return;
   if(!(D.activeBattles||[]).some(y=>y.id===x.id))return;battleById(x.id).then(b=>{if(!b.active)return;pickBattle(b);if(x.side&&x.side!==BT.side){BT.side=x.side;sideSeg();autoChecks();applyChecks();setBountyFromBattle();render()}}).catch(()=>{})}
 function bName(b){return`${b.att.n} protiv ${b.def.n}${b.region?" · "+b.region:""}`}
-function sideSeg(){const b=BT.b;side.innerHTML=b?["att","def"].map(k=>`<input type="radio" name="side" id="side-${k}" value="${k}" ${BT.side===k?"checked":""}><label for="side-${k}">${k==="att"?"Napad":"Odbrana"}: ${esc(b[k].n)}</label>`).join(""):""}
+function sideSeg(){const b=BT.b;side.innerHTML=b?["att","def"].map(k=>`<input type="radio" name="side" id="side-${k}" value="${k}" ${BT.side===k?"checked":""}><label for="side-${k}">${k==="att"?(b.type==="resistance"?"Otpor":"Napad"):"Odbrana"}: ${esc(b[k].n)}</label>`).join(""):""}
 // Vukovi kalkulator ovo menja da ugovore povuče uživo; ovde dolaze iz data.json
 let loadContracts=async b=>{};
 // bonus naredbe iz igre: battleOrder.getByBattle vraća priority (high/medium/low) naredbe tvoje države i MU-a
@@ -1772,7 +1775,7 @@ async function loadUser(name){
         // svaki deo početno ima boju koju igrač stvarno nosi; deo koji ne nosi dobija najčešću boju
         c.arm=Object.fromEntries(SLOTS.map(x=>{const r=+(eq[x]?.code||"").slice(-1);return[x,r>0?r-1:md]}))}CUR=c}
     step("Učitavam firme i cene…");
-    const cfg=(await api("gameConfig.getGameConfig")).items;
+    const gcf=await api("gameConfig.getGameConfig"),cfg=gcf.items;if(gcf.region&&gcf.region.resistanceCitizenBonusPercent>0&&gcf.region.resistanceAllyBonusPercent>0)RESB={cit:gcf.region.resistanceCitizenBonusPercent,ally:gcf.region.resistanceAllyBonusPercent};
     const ids=(await api("company.getCompanies",{userId:user._id,perPage:50})).items;
     const comps=(await pool(ids,6,id=>api("company.getById",{companyId:id}))).filter(c=>c&&!c.disabledAt);
     const need=new Set(["bread","steak","cookedFish","lightAmmo","ammo","heavyAmmo","cocain","case1","case2","woodenCase","scraps","steel"]);

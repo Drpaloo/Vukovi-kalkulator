@@ -24,4 +24,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/wealth.json
-          if git diff --cached --quiet; then echo "nema promena"; else git commit -m "Snimak bogatstva $(date -u +%F\ %H:%M)"; git pull --rebase -q; git push; fi
+          if git diff --cached --quiet; then
+            echo "nema promena"
+          else
+            git commit -m "Snimak bogatstva $(date -u +%F\ %H:%M)"
+            pushed=0
+            for i in 1 2 3; do
+              if git pull --rebase -q && git push; then pushed=1; break; fi
+              sleep 5
+            done
+            [ "$pushed" = 1 ]
+          fi

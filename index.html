@@ -671,8 +671,11 @@ function prices(){if(_PC)return _PC;const p=D.prices;return{
 function craftCost(r){const m=D.craftMats||FALLBACK.craftMats;return CRAFT[r]*m.scraps.bid+2*STEEL[r]*m.steel.ask}
 const CW={weapon:0.3,armour:0.14};
 // prosečna vrednost jedne nasumične izrade: alb-mafia ako je ima u podacima, inače iz medijana marketa
+// nasumična izrada daje nasumičan kvalitet, pa joj je prava vrednost očekivanje preko kvaliteta (a + b×0,5, prosek kvaliteta 0–1),
+// a ne medijana prodatih komada; bez a/b (malo prodaja) ostaje medijana, a ručno upisana cena ima prednost
+function expectVal(code){if(ASK[code]>0)return ASK[code];const e=(D.equipment||{})[code]||FALLBACK.equipment[code];if(!e)return Infinity;return e.a!=null&&e.b!=null?e.a+e.b*0.5:e.price}
 function ownCraft(r){const sl=[{code:WCODE[r],w:CW.weapon},...SLOTS.map(x=>({code:x+(r+1),w:CW.armour}))];
-  return{value:sl.reduce((t,x)=>t+x.w*market(x.code),0),slots:sl.map(x=>({code:x.code,value:market(x.code)}))}}
+  return{value:sl.reduce((t,x)=>t+x.w*expectVal(x.code),0),slots:sl.map(x=>({code:x.code,value:expectVal(x.code)}))}}
 function craftTiers(){const al={};((D.craft||{}).tiers||[]).forEach(t=>al[t.tier]=t);
   return[3,4,5].map(r=>{const a=al[r+1],o=ownCraft(r);return{r,scraps:a?a.scraps:CRAFT[r],steel:a?a.steel:STEEL[r],alb:a?a.value:null,own:o.value,
     value:a?a.value:o.value,slots:(a?a.slots:o.slots).slice().sort((x,y)=>y.value-x.value)}})}

@@ -328,7 +328,7 @@ tr.cur td{background:var(--brass-soft)}
       <li>Polje „Ugovor i bounty" se popuni samo. Ugovor ima prioritet: dok je aktivan računa se samo ugovor, a kad je popunjen ili ga nema računa se bounty. Popunjenost ugovora se računa sama iz isplata članova tvog MU-a, bez ključa.</li></ul>
       <h3>4. Preporuka</h3>
       <ul><li>Pokazuje dan sa najvećom štetom koji te ostavlja u plusu, za izabranu bitku. Dan je Burst (nalet sa punom zalihom: 150 health-a i puna traka gladi) pa ostatak 8h zalihe (regen health-a i ostatak hrane), sve pod jednim pill-om.</li>
-      <li>Burst i ostatak mogu imati različitu opremu. Biraju se zajedno: najveća ukupna šteta uz saldo dana u plusu. Za svaki komad piše samo cena: najviše što vredi platiti za njega, i da li da ga kupiš, napraviš ili već imaš. Cena je iz cena po kojima se komadi prodaju i osvežava se na 6 sati, jer ponude na marketu ne mogu da se vide uživo, pa je to procena.</li>
+      <li>Burst i ostatak mogu imati različitu opremu. Prvo se bira najjači burst koji dan može da pokrije, pa ostatak sa najviše štete uz saldo dana u plusu. Za svaki komad piše samo cena: najviše što vredi platiti za njega, i da li da ga kupiš, napraviš ili već imaš. Cena je iz cena po kojima se komadi prodaju i osvežava se na 6 sati, jer ponude na marketu ne mogu da se vide uživo, pa je to procena.</li>
       <li>Pločica municije pokazuje i koliko metaka treba za tu sesiju (jedan metak po udarcu).</li>
       <li>Ispod oba dela je „Dnevno trošenje opreme" (burst i ostatak zajedno): za svaki komad procenat trajnosti, koliko komada to znači i koliko košta. Oružje gubi 1% po udarcu, a komad seta 1% po udarcu koji nisi izbegao.</li>
       <li>„Primeni preporuku u kalkulator" prebacuje build ostatka sesije (duži deo dana) u „Probaj svoj build".</li></ul>
@@ -931,18 +931,21 @@ function bestDay(bonus){const own=!_PC;if(own)_PC=prices();try{
   const tot=(B,O)=>{const dmg=B.dmg+O.dmg,pool=poolM??poolAuto(dmg),bounty=incBC(dmg,base);return{dmg,pool,bounty,net:B.v+O.v+daily+pool+bounty-P.pill}};
   const FB=front("b"),FO=front("o"),all=[];let top=null,best=null;
   for(const B of FB)for(const O of FO){const c={B,O,t:tot(B,O)};all.push(c);if(!top||c.t.net>top.t.net)top=c}
-  // kao ranije: najveća šteta u plusu, pa među skoro jednakim (do 1,5% manje) onaj sa najviše plusa, da se izbor ne preskače zbog sitnih promena cena
-  let bd=0;for(const c of all)if(c.t.net>=NETMIN&&c.t.dmg>bd)bd=c.t.dmg;
-  if(bd>0)for(const c of all)if(c.t.net>=NETMIN&&c.t.dmg>=bd*.985&&(!best||c.t.net>best.t.net))best=c;
+  // redosled (Drpalo, 2026-10-18): prvo najjači burst koji dan još može da pokrije, pa za njega ostatak sa najviše štete uz saldo dana u plusu.
+  // sitne razlike (do 1,5%) se ne jure, da se izbor ne preskače zbog sitnih promena cena: tada pobeđuje više ukupne štete, pa više plusa
+  const ok=all.filter(c=>c.t.net>=NETMIN);let bb=0;for(const c of ok)if(c.B.dmg>bb)bb=c.B.dmg;
+  if(bb>0){const nb=ok.filter(c=>c.B.dmg>=bb*.985);let bd=0;for(const c of nb)if(c.t.dmg>bd)bd=c.t.dmg;
+    for(const c of nb)if(c.t.dmg>=bd*.985&&(!best||c.t.net>best.t.net))best=c}
   const fits=!!best;if(!best)best=top;
   if(!best){DAYK=key;DAYB=null;return null}
   let B=best.B,O=best.O;
-  // kvalitet po komadu za oba dela: najviše ukupne štete dok dan ostaje u plusu
+  // kvalitet po komadu, istim redom: prvo burst (najviše štete naleta), pa ostatak (najviše ukupne štete), dok dan ostaje u plusu
   if(fits&&hasFit()){let qb=Object.fromEntries(QSL.map(k=>[k,(B.st.q1??50)/100])),qo=Object.fromEntries(QSL.map(k=>[k,(O.st.q1??50)/100]));
     B=part("b",B.st,qb);O=part("o",O.st,qo);let cur=tot(B,O);
-    for(let pass=0;pass<2;pass++)for(const k of["b","o"])for(const sl of QSL)for(const q of QSTEP){
+    for(const k of["b","o"])for(let pass=0;pass<2;pass++)for(const sl of QSL)for(const q of QSTEP){
       const qs={...(k==="b"?qb:qo),[sl]:q},nB=k==="b"?part("b",B.st,qs):B,nO=k==="o"?part("o",O.st,qs):O,t=tot(nB,nO);
-      if(t.net>=NETMIN&&(t.dmg>cur.dmg+1||(Math.abs(t.dmg-cur.dmg)<=1&&t.net>cur.net))){B=nB;O=nO;cur=t;if(k==="b")qb=qs;else qo=qs}}
+      const a=k==="b"?nB.dmg:t.dmg,c=k==="b"?B.dmg:cur.dmg;
+      if(t.net>=NETMIN&&(a>c+1||(Math.abs(a-c)<=1&&t.net>cur.net))){B=nB;O=nO;cur=t;if(k==="b")qb=qs;else qo=qs}}
     B={...B,st:{...B.st,qs1:qb}};O={...O,st:{...O.st,qs1:qo}}}
   const t=tot(B,O),sm=k=>B.x[k]+O.x[k];
   const inc={firms:dI.firms,rad:dI.rad,cases:sm("landed")*caseV,wooden:dI.wooden,pool:t.pool,scrap:sm("scrap"),bounty:t.bounty};
@@ -1074,7 +1077,7 @@ function renderRec(){
     sess("2. Ostatak sesije",`regen health-a + ${fmt(xR.meals)} obroka, isti pill`,xR,sR.ammo,sR.food)+
     wear+`<p class="hint" style="margin:8px 0 0"><b>Cena „do X“ na komadu je preporučen iznos: najviše što vredi da potrošiš na taj komad.</b> Ako je ponuda na marketu skuplja, bolje ga napravi. „Nivo“ je preporučen kvalitet komada (Min, Avg ili Max raspona stata) uz koji dan ostaje u plusu; za komad koji već nosiš preporuka ne važi: piše gde je tvoj komad u rasponu i koliko vredi na marketu. ${hasFit()?"Nivo je biran po komadu, za oba dela: najviše štete za uloženi novac uz saldo dana ≥ 0.":"Bez cena po kvalitetu nivo je svuda Avg (podrazumevano), jer ne mogu da izaberem po komadu."} Pretpostavka: cena komada raste linearno sa statom, po prodajama sa marketa. Računa se iz cena po kojima se komadi prodaju, a osvežava se na 6 sati, jer ponude ne mogu da se vide uživo, pa je to procena.</p>`;
   recDmg.textContent=fk(r.dmg);recNet.textContent=sg(r.net);recNet.style.color=r.net>=0?"var(--good)":"var(--bad)";recK.textContent=perK(r);recK.style.color=recNet.style.color;
-  recNote.textContent=`Dan je Burst sa punom zalihom (${fmt(BASE.health)} health-a i ${BASE.hunger} obroka), pa ostatak 8h zalihe (regen health-a i ostatak hrane), sve pod jednim pill-om; ukupno ~${fmt(r.h)} udaraca. Burst i ostatak su birani zajedno: najveća ukupna šteta uz saldo dana u plusu, uz bonus ${b.base.bonus}%, ugovor ${(b.base.ct||0).toFixed(3)} i bounty ${b.base.bp.toFixed(3)} na 1k.`+(same?"":" Oprema u dva dela može da se razlikuje: bira se par koji zajedno daje najviše štete, a ne najbolji build za svaki deo posebno.")+` ${hasFit()?"":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji. Računato po današnjim cenama.`;
+  recNote.textContent=`Dan je Burst sa punom zalihom (${fmt(BASE.health)} health-a i ${BASE.hunger} obroka), pa ostatak 8h zalihe (regen health-a i ostatak hrane), sve pod jednim pill-om; ukupno ~${fmt(r.h)} udaraca. Prvo je izabran najjači burst koji dan može da pokrije, pa ostatak sa najviše štete uz saldo dana u plusu, uz bonus ${b.base.bonus}%, ugovor ${(b.base.ct||0).toFixed(3)} i bounty ${b.base.bp.toFixed(3)} na 1k.`+(same?"":" Zato ostatak često nosi jeftiniju opremu: burst troši veći deo novca.")+` ${hasFit()?"":"Kvalitet je srednji za sve komade, jer još nemam cene po kvalitetu. Za izbor po komadu treba API ključ. "}Bounty na burst-u nije potvrđen (14.10 je isplata bila 0), pa saldo može biti manji. Računato po današnjim cenama.`;
   window._rec=sR;
 }
 // Burst je spojen u preporuku (renderRec / bestDay): dan = burst pa ostatak 8h zalihe
@@ -1919,7 +1922,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="9a2d4e71c5";
+const VKV="dc96316823";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

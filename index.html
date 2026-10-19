@@ -1142,6 +1142,7 @@ function checkDefs(){const me=D.me||{},hq=me.hq||0,b=BT.b;
 let CK={};
 // bonus otpora (gameConfig.region): građanin zemlje u otporu 30%, saveznik 15%; 15% potvrđeno u igri 17. 10. (Gabon u bici Moldova otpor)
 let RESB={cit:30,ally:15};
+// pakt: u običnom ratu važi braniocu, u bici otpora samo strani otpora (Moldova 17. 10. +10); okupatoru koji brani region ne važi (Romania/Great Plains 19. 10. nema pakta u igri)
 function pactSd(){const b=BT.b;return b&&BT.side==="att"&&b.type==="resistance"?b.att:b.def}
 function drawChecks(on){CK=on||{};const L=checkDefs().filter(([k,,v])=>CK[k]&&v);
   bChecks.innerHTML=BT.b?(L.length?L.map(([k,l,v])=>`<div class="ckrow">${l}<span class="n">${v>0?"+":""}${v}%</span></div>`).join("")+`<div class="ckrow ckt">Ukupno<span class="n">${+sumChecks().toFixed(2)}%</span></div>`:`<div class="ckrow">Nemaš bonus u ovoj bitki</div>`):""}
@@ -1149,7 +1150,7 @@ function sumChecks(){return checkDefs().reduce((t,[k,,v])=>t+(CK[k]?v:0),0)}
 function readChecks(){return{...CK}}
 function applyChecks(){if(BT.b)bonus.value=Math.max(-100,Math.min(150,sumChecks()))}
 function autoChecks(){const me=D.me||{},b=BT.b;if(!b)return;const sd=b[BT.side],c=sd.c;
-  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,pact:(BT.side==="def"||b.type==="resistance")&&!!(me.pacts||{})[pactSd().c]&&pactSd().c!==me.country,res:b.type==="resistance"&&BT.side==="att"&&(c===me.country||(me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)):(me.allies||[]).includes(c))),nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
+  drawChecks({pat:c===me.country,co:sd.co.includes(me.country),mo:sd.mo.includes(me.mu),hq:(me.hq||0)>0,bunk:BT.side==="def"&&b.bunker>0,ally:me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)&&c!==me.country):(me.allies||[]).includes(c),base:BT.side==="att"&&b.base>0,sworn:!!me.enemy&&b[BT.side==="att"?"def":"att"].c===me.enemy,pact:(b.type==="resistance"?BT.side==="att":BT.side==="def")&&!!(me.pacts||{})[pactSd().c]&&pactSd().c!==me.country,res:b.type==="resistance"&&BT.side==="att"&&(c===me.country||(me.alliance?(!me.alliance.suspended&&me.alliance.members.includes(c)):(me.allies||[]).includes(c))),nolink:BT.side==="def"&&b.linked===false,occ:(me.occBy||[]).includes(c),lost:BT.side==="att"&&!!b.lostAtt})}
 // ugovor i bounty: bounty ove bitke za tvoju stranu + tvoj prosečan ugovor iz poslednjih 7 dana
 // bounty se računa samo dok fond bitke ima para; ugovor tvog MU-a čitamo iz aukcija ugovora za ovu bitku
 // ugovor plaća samo dok MU ne nabije ugovorenu štetu, pa je to gornja granica
@@ -1922,7 +1923,7 @@ loadContracts=async b=>{if(b._ct)return false;b._ct=1;const me=D.me||{};
     }catch(e){}}
   return true};
 
-const VKV="dc96316823";
+const VKV="0d310b73b9";
 (function(){try{const q=new URLSearchParams(location.search);if(q.has("v")||q.has("u"))history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   let busy=false;const chk=async()=>{if(busy||document.hidden)return;busy=true;try{
     const r=await fetch(location.pathname+"?nc="+Date.now(),{cache:"no-store"});if(!r.ok)return;

@@ -39,7 +39,28 @@ def fetch():
     return urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
 
 
+def once():
+    """Jedna provera, stanje se pamti u fajlu (za GitHub Actions)."""
+    path = os.environ.get("STATE_FILE", "state.json")
+    try:
+        active = json.load(open(path)).get("active", False)
+    except Exception:
+        active = False
+    html = fetch()
+    if LOGGED_IN_MARKER and LOGGED_IN_MARKER not in html:
+        notify("Cookie je istekao ili nisi ulogovan, obnovi ED_COOKIE.")
+        return
+    if MARKER in html:
+        active = True
+    elif active:
+        notify("Deploy je zavrsen (traka 'Deploy Active' je nestala).")
+        active = False
+    json.dump({"active": active}, open(path, "w"))
+
+
 def main():
+    if os.environ.get("ONCE"):
+        return once()
     active = False
     misses = 0
     while True:

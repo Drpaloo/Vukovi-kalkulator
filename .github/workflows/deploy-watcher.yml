@@ -1,0 +1,21 @@
+name: Deploy watcher
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: state.json
+          key: deploy-state-${{ github.run_id }}
+          restore-keys: deploy-state-
+      - run: python3 deploy_watcher.py
+        env:
+          ONCE: "1"
+          ED_COOKIE: ${{ secrets.ED_COOKIE }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}

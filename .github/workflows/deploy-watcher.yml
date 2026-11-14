@@ -17,5 +17,7 @@ jobs:
         env:
           ONCE: "1"
           ED_COOKIE: ${{ secrets.ED_COOKIE }}
+          ED_LOGIN: ${{ secrets.ED_LOGIN }}
+          ED_PASSWORD: ${{ secrets.ED_PASSWORD }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
